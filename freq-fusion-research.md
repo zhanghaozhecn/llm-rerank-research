@@ -4165,7 +4165,7 @@ QuantFactory/MiniCPM4-0.5B Q4_K_M（306MB → gguf_models）后冒烟即
   （llama arch, 11-07 eval_logz 1 万行 PROD 87.78% vs 0.8B 92.07%,
   −4.29pp）；MiniCPM4-0.5B 不可测 = 该家族在 llama.cpp 路径上
   **没有可测的成员**（MiniCPM5 稀望但已证弱）。模型/家族轴就此闭合。
-- 残留物：`D:\gguf_models\MiniCPM4-0.5B-Q4_K_M.gguf`（306MB, 无用可删）
+- 残留物：`本机 GGUF 模型目录\MiniCPM4-0.5B-Q4_K_M.gguf`（306MB, 无用可删）
 
 #### wiki 语料池化全表（2026-11-14, 用户指令"用户域太简单了，看 wiki 语料的指标"）
 
@@ -4326,11 +4326,11 @@ tag）→ 11 处 `llama_new_context_with_model` → `llama_init_from_model`
   freq_beta=14.00/模型名）。
 
 #### 审核表移入拼读双拼源目录（2026-11-15, 用户指令; 两次纠正后定案:
-**OneDrive typing\拼读双拼 = 项目源目录**, D:\rime-pindu-double-pinyin =
+**OneDrive typing\拼读双拼 = 项目源目录**, 拼读双拼开源同步目录 =
 sync.py 的开源同步目标——审核表属私有数据, 放源目录且不在 CFG_FILES
 白名单内, 不会进开源仓）
 
-- 副本：`D:\OneDrive\typing\拼读双拼\pairfix_review_union_05b.tsv`
+- 副本：`拼读双拼仓库（本机）\pairfix_review_union_05b.tsv`
   （与 eval/ 副本 md5 一致, 71,852 B × 266 行）——审核在源目录做
 - **旧审核表四张已删**（均可由脚本重生成, 非数据丢失）：
   pairfix_review.tsv（193 对比值门）、pairfix_review_union.tsv（213 对
@@ -5342,9 +5342,9 @@ LLM 候选重排项目的**研究资料总库**：方法文档、评测工具链
   但 2 码提交占 ~48.6% 触发量翻倍以上 + 污染对碎片化（294 纯负对
   无重灾对）→ 维持关闭; 数据已备档, 未来放开再议。
   **人工审核工作流（2026-11-17 起指 05bi 终态表, ⑦ 见下）**: 审核工作表 =
-  `D:\OneDrive\typing\拼读双拼\pairfix_review_union_<tag>_audited.tsv`
+  `拼读双拼仓库（本机）\pairfix_review_union_<tag>_audited.tsv`
   （判定列改完即终态; **OneDrive typing\拼读双拼 是拼读双拼项目的源目录**，
-  D:\rime-pindu-double-pinyin 是 sync.py 的开源同步目标; 审核表不在 sync.py
+  拼读双拼开源同步目录 是 sync.py 的开源同步目标; 审核表不在 sync.py
   白名单内不会进开源仓）; **xlsx↔tsv 双向 = eval\audit_xlsx.py**（手机编辑
   支持, 导出侧自动净化 \x0b 类控制字符）; 全流程 = eval\pairfix_pipeline.py
   六子命令（check/manifest/diff/batch/merge/deploy）+ SOP 十阶段（研究库
@@ -5428,7 +5428,7 @@ LLM 候选重排项目的**研究资料总库**：方法文档、评测工具链
 | `RIME_LLM_CORPUS` | `D:/OneDrive/typing/bert_seg/data/sentences_filtered.txt` | wiki 句子语料 |
 | `RIME_LLM_DATA_DIR` | `D:/OneDrive/typing/bert_seg/data/batch_eval` | 评测缓存/结果目录 |
 | `RIME_LLM_SEG_CACHE` | `…/batch_eval/segments_10000.jsonl` | HanLP 分段缓存（eval_prefer） |
-| `RIME_LLM_WIKI` | `D:/分词注音工程/分读音词频统计/data/sentences_new.txt` | wiki 原始语料 |
+| `RIME_LLM_WIKI` | `本机分词注音工程/分读音词频统计/data/sentences_new.txt` | wiki 原始语料 |
 
 RIME 用户目录 = `%APPDATA%\Rime`（prep_training 读打字语料 `rime_llm_corpus.tsv`；
 env `RIME_LLM_USER_CORPUS` 可换路径）；bert_seg 已不再研究（旧 `llm_training.txt`
@@ -5518,7 +5518,7 @@ env `RIME_LLM_USER_CORPUS` 可换路径）；bert_seg 已不再研究（旧 `llm
 **结论**：0.5B 有真正更小的 Q4_0（−28% 体积、−36% 预填充、−21% 候选段），代价
 +0.41pp；0.8B 没有更小的甜点，只能动嵌入（−66MB、−8~21ms，质量差 +0.16pp = 噪声级）。
 量化不改变 ctx\*=20（拟合交点仍 >20）与 k\*（候选段仍 <100ms）。文件在
-`D:\gguf_models\quant_probe\`，CE 目录 `ce_05bi_cleanq4km_c20` / `ce_05bi_q40_c20` /
+`本机 GGUF 模型目录\quant_probe\`，CE 目录 `ce_05bi_cleanq4km_c20` / `ce_05bi_q40_c20` /
 `ce_05bi_q40o40_c20` / `ce_08b_cleanq4km_c20` / `ce_08b_e4k_c20`；生产配置未改。
 
 ### 0.6B 追问：Q5_0 假设检验（2026-11-18 晚）
@@ -5586,7 +5586,7 @@ ctx20/k6 CE + 延迟（10,002 窗）。结果（诚实 / 生产点）：
 
 - **base 同档比 instruct 准 0.14pp、快 7ms**（instruct Q4_K_M：131/102/4.30%）。
 - Q4_0 在 base 上只 +0.18pp（instruct 上 +0.41pp），但仍不符合"正确率不能掉"→ 仍用 Q4_K_M。
-- 文件：`D:\gguf_models\quant_probe\05b_base_q4km.gguf`，
+- 文件：`本机 GGUF 模型目录\quant_probe\05b_base_q4km.gguf`，
   sha256 `8f9342b201053121be7647ac50d8ff048c51e8c8325df20f5ba3cd57c81410bf`；
   CE 目录 `ce_05b_base_{q4km,q5_0,q4_0,q4_0_out40}_c20`。
 - 分发：自建文件需上传 ModelScope（namespace/token 待定），再改安装器 URL/默认名；
@@ -5623,7 +5623,7 @@ ctx20/k6 CE + 延迟（10,002 窗）。结果（诚实 / 生产点）：
   生产推荐改为 **0.6B base Q4_K_M + k=6**；0.5B base 退为回退档；0.8B base 出局。
 - 教训：**“对话微调版 vs base”是模型选型的第一级变量，量化和 k 都是第二级**。0.6B 上
   对话版比 base 差 0.67pp，而量化族在 0.1pp 量级——先固定 base，再谈量化/参数。
-- 文件：`D:\gguf_models\quant_probe\base06b_q4km.gguf`
+- 文件：`本机 GGUF 模型目录\quant_probe\base06b_q4km.gguf`
   （sha256 `5dd353df7326c7a6e0574de74eeb8fb1786a00b2fa9404182368b9b0cd30a036`）、
   `base08b_q4km.gguf`（sha256 `450169cdd1505b96300b12d7cce6aae56ebefbf563c009a80cf2419cec3a455b`）；
   CE 目录 `ce_06bb_base_q4km_c20` / `ce_08bb_base_q4km_c20`；

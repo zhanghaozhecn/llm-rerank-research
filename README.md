@@ -31,7 +31,7 @@
 | `singlechar_corpus.tsv` | 单字专项语料（3,206 窗）— **2026-11-18 已删**（0 引用，结论在报告） |
 | `time_wiki.tsv` / `train_mode1.tsv` / `wiki_mode2.tsv` | 时间衰减与两模式对照实验中间数据 |
 
-> 这些是历史实验的**冻结记录**（部分文件内仍含搬迁前的 `D:\llm-rerank-research\` 绝对路径），只读留档、不追改。
+> 这些是历史实验的**冻结记录**（部分文件内仍含搬迁前的 `研究库（本机）\` 绝对路径），只读留档、不追改。
 > **2026-11-17 eval 脚本大清洗**：已定结论的旧脚本移入
 > `legacy-20261117\removed-scripts-20261117\`（清单与替代入口见该目录 `README.md`）；
 > 三类重复功能合并为 `speed_bench.py`（模型/库速度）、`grid_ctx_cand.py`（ctx×候选数）、
@@ -47,8 +47,8 @@
 > （同窗 CE 对拍, --sim/--ngl/--out 可换评测器）、`speed_bench.py --sims`（两库延迟 A/B 交错）、
 > `--phase impact`（全融合回放：选重率=错误率 / 干预率 / 改对改错换错）；`make_build_cuda_bat.py` 已归档。
 
-工具链依赖：`sim_rerank.exe` 构建于本目录 `cpp\build_sim\`（`cmake -B cpp/build_sim -S cpp -G "Visual Studio 17 2022" -A x64` 后 `cmake --build cpp/build_sim --config Release --target sim_rerank`，需 `D:\llama.cpp-mirror\`；2026-09-30 已按此重建，四个评测器目标齐全）；生产 rime_llm.dll 与性能工具 bench_threads 在插件版 `..\rime-llm-rerank\cpp\`。
-镜像 **2026-11-15 已升级 `9f26fe11c`**（v1.0.0 时代, 分支 `upgrade-20261115`；API 三符号迁移 + 选重率证据, 见研究文档"llama.cpp 最新版尝试/采纳反转"节）；86b 对照基线 = `D:\llama.cpp-mirror-base` git worktree + 本目录 `cpp\build_sim_base\sim_rerank.exe`（升级 A/B 复用）；build-cuda 重编须经 vcvars64 垫片（生成器已归档：`legacy-20261117\removed-scripts-20261117\bulk-20261117\make_build_cuda_bat.py`）。
+工具链依赖：`sim_rerank.exe` 构建于本目录 `cpp\build_sim\`（`cmake -B cpp/build_sim -S cpp -G "Visual Studio 17 2022" -A x64` 后 `cmake --build cpp/build_sim --config Release --target sim_rerank`，需 `llama.cpp 镜像（本机）\`；2026-09-30 已按此重建，四个评测器目标齐全）；生产 rime_llm.dll 与性能工具 bench_threads 在插件版 `..\rime-llm-rerank\cpp\`。
+镜像 **2026-11-15 已升级 `9f26fe11c`**（v1.0.0 时代, 分支 `upgrade-20261115`；API 三符号迁移 + 选重率证据, 见研究文档"llama.cpp 最新版尝试/采纳反转"节）；86b 对照基线 = `llama.cpp 基线 worktree（本机）` git worktree + 本目录 `cpp\build_sim_base\sim_rerank.exe`（升级 A/B 复用）；build-cuda 重编须经 vcvars64 垫片（生成器已归档：`legacy-20261117\removed-scripts-20261117\bulk-20261117\make_build_cuda_bat.py`）。
 分词 venv / 语料 / 模型路径用环境变量覆盖（默认值见各脚本头部）。
 
 ## GPU 批推理提速（2026-11-04：exe 内跨窗批处理判负，多进程并行落地）
@@ -85,7 +85,7 @@
   **2026-11-15 二次升级尝试（origin/master `9f26fe11c` / v1.0.0 tag）：初判回滚 → 同日依用户指令
   改判采纳**——选重率层面 2000 窗全融合回放 err −0.05pp / 选重率 +0.05pp / 翻转 4/2000 净改对，
   行为级无影响；生产源码自此绑新镜像（API 迁移三符号）。对拍方法论与构建树纪元考古见研究文档
-  "llama.cpp 最新版尝试"（回滚）+"采纳反转"两节（新基建 = `D:\llama.cpp-mirror-base` worktree 86b 基线；
+  "llama.cpp 最新版尝试"（回滚）+"采纳反转"两节（新基建 = `llama.cpp 基线 worktree（本机）` worktree 86b 基线；
   **CE 对拍门禁必须同设备同库**）。
 
 ---
@@ -333,7 +333,7 @@ Qwen2.5-0.5B `hidden=896`（896 / 256 = 3.5，不整除）。`llama-quantize` �
 
 **A.4 保留文件**
 
-- 模型：`D:\gguf_models\quant_probe\{05b_base_q4km,base06b_q4km,base08b_q4km,base4b_q4km}.gguf`
+- 模型：`本机 GGUF 模型目录\quant_probe\{05b_base_q4km,base06b_q4km,base08b_q4km,base4b_q4km}.gguf`
   （另有分发硬链 `Qwen3-0.6B-Base-Q4_K_M.gguf` 与 `upload_06b_base\` 上传包；0.5B 回退档上传包已于 2026-11-19 删除）。
   f16 中间件按“只留量化件 + 原始权重”规则用完即删。
 - **分发已上线（2026-11-19）**：`https://www.modelscope.cn/models/zhanghaozhecn/Qwen3-0.6B-Base-GGUF`

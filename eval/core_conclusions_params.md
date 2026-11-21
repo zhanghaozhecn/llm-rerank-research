@@ -42,7 +42,7 @@
 > **2026-11-19 清理**：chat/对话版权重与全部量化变体（Q4_0 / Q5_0 / Q6_K / Q3_K_M / Q2_K /
 > e4k / out40 / BF16 中间件）、对应 CE 目录、0.5B instruct 与 2B 文件均已删除；
 > 相关结论作为实测记录保留在 README 附录 A，不保留可复跑文件。
-> 分发件：`D:\gguf_models\Qwen3-0.6B-Base-Q4_K_M.gguf`（硬链）与 `upload_06b_base\`
+> 分发件：`本机 GGUF 模型目录\Qwen3-0.6B-Base-Q4_K_M.gguf`（硬链）与 `upload_06b_base\`
 > 上传包（0.5B 回退档上传包已于 2026-11-19 按用户指令删除）。
 
 CE 目录（3 个 base 部署候选 + 4B 能力上限，6 万窗主口径）：

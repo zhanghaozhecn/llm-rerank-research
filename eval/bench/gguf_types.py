@@ -65,9 +65,9 @@ def main():
         pairs = [(Path(p).stem, p) for p in args.paths]
     else:
         pairs = [("base(QuantFactory)",
-                  r"D:\gguf_models\Qwen2.5-0.5B-Q4_K_M.gguf"),
+                  r"本机 GGUF 模型目录\Qwen2.5-0.5B-Q4_K_M.gguf"),
                  ("instruct(官方)",
-                  r"D:\gguf_models\qwen2.5-0.5b-instruct-q4_k_m.gguf")]
+                  r"本机 GGUF 模型目录\qwen2.5-0.5b-instruct-q4_k_m.gguf")]
     for name, p in pairs:
         ts = gguf_tensors(p)
         agg = collections.defaultdict(lambda: [0, 0, ""])

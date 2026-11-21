@@ -27,7 +27,7 @@ OUT_DETAIL = EVAL / "user_corpus_files.jsonl"
 
 ROOTS = ["0-重要资料", "1-本科", "2-美国留学", "3-继续学习", "4-工作",
          "5-其他"]
-ONE = Path(r"D:\OneDrive")
+ONE = Path(r"OneDrive（本机）")
 MIN_FILE_CJK = 200
 MIN_PARA = 20
 CJK_RATIO = 0.5

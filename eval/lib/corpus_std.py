@@ -55,10 +55,10 @@ DICT_PATH = Path(os.environ.get(
     #   如引擎侧 r2 布局重标定：RIME_LLM_PDSP_DICT=...pdsp_dict_r2.yaml）
 WIKI_ARTICLES = os.environ.get(
     "RIME_LLM_WIKI_ARTICLES",
-    "D:/分词注音工程/分读音词频统计/data/wiki_clean.txt")   # 文章级（现行唯一 wiki 口径）
+    "本机分词注音工程/分读音词频统计/data/wiki_clean.txt")   # 文章级（现行唯一 wiki 口径）
 WIKI_SENTENCES = os.environ.get(
     "RIME_LLM_WIKI",
-    "D:/分词注音工程/分读音词频统计/data/sentences_new.txt")  # 句子池（仅旧工具/回归）
+    "本机分词注音工程/分读音词频统计/data/sentences_new.txt")  # 句子池（仅旧工具/回归）
 MODEL = os.environ.get("GGUF_MODEL", "d:/gguf_models/Qwen3.5-0.8B-Q4_K_M.gguf")
 SIM_EXE = Path(os.environ.get(
     "RIME_LLM_SIM_EXE", str(PROJ / "cpp/build_sim/Release/sim_rerank_gpu.exe")))
