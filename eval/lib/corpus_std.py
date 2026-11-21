@@ -536,9 +536,10 @@ def window_key(s):
 # 常开语料 rime_llm_corpus.tsv（TSV）：H/W/C/M 行；debug 单独文件，
 # 用事件 ID 关联。旧 llm_training.txt 由 load_legacy_training 读（归档）。
 RIME_DIR = Path(os.environ.get("APPDATA", "")) / "Rime"
+LLM_DIR = RIME_DIR / "llm_rerank"  # 2026-11-21 起 LLM 数据/日志收进子目录
 # 注意：RIME_LLM_CORPUS 是既有 wiki 句子语料 env；用户语料用独立名字。
 CORPUS_PATH = Path(os.environ.get(
-    "RIME_LLM_USER_CORPUS", str(RIME_DIR / "rime_llm_corpus.tsv")))
+    "RIME_LLM_USER_CORPUS", str(LLM_DIR / "rime_llm_corpus.tsv")))
 
 
 def _unesc(s):

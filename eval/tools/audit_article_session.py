@@ -89,8 +89,8 @@ def main():
     ap.add_argument("--article", required=True)
     ap.add_argument("--since", default="")
     ap.add_argument("--until", default="")
-    ap.add_argument("--debug-path", default=str(CS.RIME_DIR / "rime_llm_debug.txt"))
-    ap.add_argument("--ledger-path", default=str(CS.RIME_DIR / "user_ledger.tsv"))
+    ap.add_argument("--debug-path", default=str(CS.LLM_DIR / "rime_llm_debug.txt"))
+    ap.add_argument("--ledger-path", default=str(CS.LLM_DIR / "user_ledger.tsv"))
     ap.add_argument("--out", default="")
     a = ap.parse_args()
 

@@ -160,7 +160,8 @@ def cmd_deploy(a):
     appdata = os.environ.get("APPDATA")
     if not appdata:
         sys.exit("APPDATA 环境变量不存在（非 Windows 环境?）")
-    deploy = Path(appdata) / "Rime" / "llm_pairfix.tsv"
+    deploy = Path(appdata) / "Rime" / "llm_rerank" / "llm_pairfix.tsv"
+    deploy.parent.mkdir(parents=True, exist_ok=True)  # 2026-11-21 起收进子目录
 
     hdr, data = read_tsv(src)
     assert hdr[0] == "词" and len(data[0].split("\t")) >= 19, \

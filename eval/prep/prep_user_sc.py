@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """用户语料单字 3 码测试窗（2026-11-12 一字词重排研究）。
 
-输入: %APPDATA%/Rime/rime_llm_corpus.tsv（v2；iter_scenes strict 已处理 M 回撤）
+输入: %APPDATA%/Rime/llm_rerank/rime_llm_corpus.tsv（v2；iter_scenes strict 已处理 M 回撤）
       + 词典单字 3 码口径（corpus_std.load_pdsp_dict_single3，正典映射）
 窗资格: CJK 单字 + 提交码长==3（用户实际打的全码）+ 同码窗 ≥2 + pos<10。
 候选窗 = 词典序 code_to_words_sc[code][:MAX_CAND]（与百科标定域同构）；
