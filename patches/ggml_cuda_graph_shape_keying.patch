@@ -1,0 +1,35 @@
+diff --git a/ggml/src/ggml-cuda/ggml-cuda.cu b/ggml/src/ggml-cuda/ggml-cuda.cu
+index cca70592..026602f7 100644
+--- a/ggml/src/ggml-cuda/ggml-cuda.cu
++++ b/ggml/src/ggml-cuda/ggml-cuda.cu
+@@ -3295,7 +3295,29 @@ static bool ggml_cuda_graph_check_compability(ggml_cgraph * cgraph) {
+ }
+ 
+ static const void * ggml_cuda_graph_get_key(ggml_cgraph * cgraph) {
+-    return cgraph->nodes[0];
++    // [research patch 2026-11-08, llm-rerank cohort 实验] key by shape signature
++    // instead of nodes[0]: llama.cpp rebuilds every graph in the same pooled
++    // context, so nodes[0]'s address is IDENTICAL for prompt and decode graphs
++    // → all shapes shared one map entry → alternating shapes reset warmup
++    // forever and CUDA graphs never engaged. Hash (op,type,ne,flags) of every
++    // node → per-shape entries, each with its own warmup/instance.
++    // Inert when GGML_CUDA_USE_GRAPHS is undefined (production CPU builds).
++    if (cgraph->n_nodes == 0) {
++        return nullptr;
++    }
++    uint64_t h = 1469598103934665603ull;
++    auto mix = [&h](uint64_t v) { h ^= v; h *= 1099511628211ull; };
++    for (int i = 0; i < cgraph->n_nodes; i++) {
++        const ggml_tensor * n = cgraph->nodes[i];
++        mix((uint64_t) n->op);
++        mix((uint64_t) n->type);
++        for (int d = 0; d < 4; d++) {
++            mix((uint64_t) n->ne[d]);
++        }
++        mix((uint64_t) n->flags);
++    }
++    mix((uint64_t) cgraph->n_nodes);
++    return (const void *) (uintptr_t) h;
+ }
+ 
+ static bool ggml_cuda_graph_update_required(ggml_backend_cuda_context * cuda_ctx, ggml_cgraph * cgraph) {

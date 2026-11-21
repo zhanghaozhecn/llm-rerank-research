@@ -1,0 +1,48 @@
+# ── 研究库发布白名单（2026-11-21 整理定案）────────────────────────────
+# 本库 ~6.2GB，绝大多数是本机数据 / 构建产物 / 评测中间产物；采用
+# 「默认全忽略 + 白名单放行」，杜绝大数据与私有数据意外入库。
+# 分类依据与各类别说明见 分类说明.md。
+
+# 默认：根下全部忽略（含全部未列出目录与文件）
+/*
+
+# ── ① 方法文档（入库）──
+!/.gitignore
+!/README.md
+!/分类说明.md
+!/freq-fusion-research.md
+!/口径标准-corpus-standards.md
+!/系统实验-研究叙事-2026-11-18.md
+!/GDN批处理偏差-联网调研-2026-11-04.md
+!/GPU批推理提速调研-2026-11-04.md
+!/输出token过滤与推理优化调研-2026-11-07.md
+!/镜像升级-28b812d6-新数值纪元-2026-11-04.md
+!/phaseB3表差异_86b94708_vs_28b812d6.md
+!/分词对比抽样.md
+
+# ── ② 工具链（入库：脚本与说明；目录内的数据形态仍忽略）──
+!/patches/
+!/eval/
+eval/*
+!eval/README.md
+!eval/core_conclusions_params.md
+!eval/lib/
+!eval/tools/
+!eval/calib/
+!eval/prep/
+!eval/ce/
+!eval/bench/
+!eval/pairfix/
+
+# 工具目录内仍排除的数据/缓存形态
+__pycache__/
+*.pyc
+eval/**/*.tsv
+eval/**/*.jsonl
+eval/**/*.json
+eval/**/*.npz
+eval/**/*.safetensors
+eval/**/*.log
+eval/**/*.txt
+eval/**/*.csv
+eval/**/*.png
