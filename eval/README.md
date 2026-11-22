@@ -41,12 +41,17 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   `--metric total|prep|step23` 分别给整窗/预填充/候选段，逐窗 SIM_* 计时）**、
   **`latency_grid`（ctx×k×设备的分位延迟，均值口径）**、
   `ab_upgrade`（llama.cpp 升级 A/B）、`gguf_types`（GGUF 张量体检）
-- **tools/**（7）`check_records_v2`、`run_tests`、`eval_rerank`、
+- **tools/**（11）`check_records_v2`、`run_tests`、`eval_rerank`、
   **`pareto_front`（2026-11-18：(中位延迟, 选重率) 帕累托前沿，可 `--metric
   err|honest|prod`、可选 ctx 池化）**、**`plot_latency`（②③ 的 2×2 拼图，部署档 Q4_K_M）**、
   **`fit_prefill`（T_prefill 线性拟合 + ctx* 选择：<150ms 且 ≤20；`--extra` 可拟合量化变体）**、
   **`audit_article_session`（2026-11-20：真机文章逐词审计，文章↔语料↔debug↔账本四方
-  对照 + W.ctx 文档核对 + 融合算术 + 账本对账；`--since/--until` 定会话）**
+  对照 + W.ctx 文档核对 + 融合算术 + 账本对账；`--since/--until` 定会话）**、
+  **`wiki_fp_pos`（2026-11-23：wiki 全拼候选位置分布，Collect 上限 16 的依据）**、
+  **`precommit_conf_collect` / `precommit_conf_score.lua` /
+  `precommit_conf_report`（2026-11-23：「确定前缀预提交」模式效果研究——
+  真实引擎取头候选 → LLM 词级 CE → margin→准确率/覆盖率/按键成本；
+  结论见设计文档 §十）**
 
 ## 约定
 
