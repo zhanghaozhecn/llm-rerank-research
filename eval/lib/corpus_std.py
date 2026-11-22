@@ -537,9 +537,31 @@ def window_key(s):
 # 用事件 ID 关联。旧 llm_training.txt 由 load_legacy_training 读（归档）。
 RIME_DIR = Path(os.environ.get("APPDATA", "")) / "Rime"
 LLM_DIR = RIME_DIR / "llm_rerank"  # 2026-11-21 起 LLM 数据/日志收进子目录
+
+
+def corpus_files():
+    """语料文件清单（2026-11-22 按方案分文件夹）：llm_rerank\\<方案>\\
+    rime_llm_corpus.tsv + 旧位置（llm_rerank 根 / Rime 根）的混合历史文件。
+    分析脚本可 iterate 全部文件（各方案行互不混合），默认路径取最新的。"""
+    paths = []
+    for p in (LLM_DIR / "rime_llm_corpus.tsv",
+              RIME_DIR / "rime_llm_corpus.tsv"):
+        if p.is_file():
+            paths.append(p)
+    if LLM_DIR.is_dir():
+        for d in sorted(LLM_DIR.iterdir()):
+            p = d / "rime_llm_corpus.tsv"
+            if d.is_dir() and p.is_file():
+                paths.append(p)
+    return paths
+
+
+CORPUS_PATHS = corpus_files()
 # 注意：RIME_LLM_CORPUS 是既有 wiki 句子语料 env；用户语料用独立名字。
-CORPUS_PATH = Path(os.environ.get(
-    "RIME_LLM_USER_CORPUS", str(LLM_DIR / "rime_llm_corpus.tsv")))
+CORPUS_PATH = Path(os.environ["RIME_LLM_USER_CORPUS"]) \
+    if os.environ.get("RIME_LLM_USER_CORPUS") else (
+        max(CORPUS_PATHS, key=lambda p: p.stat().st_mtime)
+        if CORPUS_PATHS else LLM_DIR / "rime_llm_corpus.tsv")
 
 
 def _unesc(s):
