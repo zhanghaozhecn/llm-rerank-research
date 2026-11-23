@@ -13,8 +13,9 @@
 
 | 路径 | 内容 |
 |------|------|
-| `eval\` | 评测工具链（python，2026-11-18 子目录重组后 **40 个脚本 × 7 个子目录**，明细见 `eval\README.md`）：`lib\`（共享模块 9: +gguf_bpe）、`prep\`（7）、`ce\`（run_ce_cohort）、`calib\`（7: +fusion_sweep_all / matrix_2x2）、`pairfix\`（4）、`bench\`（6: +latency_synth / latency_grid）、`tools\`（6: +pareto_front / plot_latency / fit_prefill）；报告与工作数据统一落 eval 根；旧脚本归档见 `legacy-20261117\removed-scripts-20261117\` |
+| `eval\` | 评测工具链（python，2026-11-18 子目录重组后 7 个子目录，明细见 `eval\README.md`）：`lib\`（10: +gguf_bpe / wxgram）、`prep\`（7）、`ce\`（run_ce_cohort）、`calib\`（7: +fusion_sweep_all / matrix_2x2）、`pairfix\`（4）、`bench\`（6: +latency_synth / latency_grid）、`tools\`（16: +pareto_front / plot_latency / fit_prefill / 预提交与组句系列）；报告与工作数据统一落 eval 根；旧脚本归档见 `legacy-20261117\removed-scripts-20261117\` |
 | `系统实验-研究叙事-2026-11-18.md` | **主线四步的研究叙事**：问题/口径 → ① 词频 → ② 上文 → ③ 候选 → ④ 精度/前沿；模型文件固定为三个 official base 自建 Q4_K_M（2026-11-19），量化比较在附录 A |
+| `全拼简拼整句重排-调研与设计.md` | **整句模式专题**（2026-11-22/23）：引擎机制、阶段一满覆盖重排、异步评分基建、子词复用、预提交效果研究（§十）、**组句候选生成 + LLM 句级重排（§十一，三模型对照与整句 CE 延迟）** |
 | `eval_samples.tsv` | wiki 同码采样样本 10 万行（名次分布 81%/11.5%/3.7%/1.8%/1.7%） |
 | `train_samples.tsv` | 打字语料训练样本 1.85 万行 |
 | `pdsp_dict.yaml` | 拼读双拼词典拷贝（评测用） |
@@ -502,6 +503,23 @@ CSS（冲突语义相似度 = 码组候选对最大词向量余弦，曾用于"�
 
 `fused = score + β·log1p(eff)`（2026-09-02 对数域加法，词频无上限可翻盘；β=1.5 本机
 真实窗标定，替换旧凸组合）；eff = Rime formula_d 时间衰减计数。详见 `freq-fusion-research.md`。
+
+### 组句候选生成 + LLM 句级重排（2026-11-23，正结果；详见设计文档 §十一）
+
+用外部 N-gram（万象 LTS gram，Rime octagram 格式）在万象词表上做词级 beam，生成
+**5 个整句候选**；wiki A/B 两区各 100 句（3–12 词）的命中率：
+
+| 模型 | N-gram top-5 A/B | 词表内 top-5 | LLM 整句 CE 重排 top-1 A/B | 词表内 top-1 |
+|---|---|---|---|---|
+| 万象 LTS（390MB） | **71% / 62%** | **82.9% / 84.5%** | **64% / 57%** | **73.7% / 81.0%** |
+| Rime 官方八股文 bgw（206MB） | 67% / 53% | 82.9% / 72.4% | 62% / 49% | 76.3% / 69.0% |
+| 千问内置剪枝版（10.4MB） | 54% / 46% | 65.8% / 63.8% | 50% / 43% | 60.5% / 62.1% |
+
+- 生产 3-token 打分（安全基线）对整句几乎无效：万象 56% / 41%（B 区噪声级），
+  必须用**完整候选 token 的 CE**。
+- 整句 CE 成本 ≈ **25ms/候选 token**（0.6B Q4，8 线程；成本 = LM head 行数）：
+  5 候选 p50 252ms / p95 398ms（3-token 65ms）→ 只能异步、句子输入结束后评分，
+  不能进按键路径；插件 DLL 已加 `llm.score_full`（§11.7）。
 
 # 三、限制
 

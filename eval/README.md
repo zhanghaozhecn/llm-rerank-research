@@ -43,7 +43,7 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   `--metric total|prep|step23` 分别给整窗/预填充/候选段，逐窗 SIM_* 计时）**、
   **`latency_grid`（ctx×k×设备的分位延迟，均值口径）**、
   `ab_upgrade`（llama.cpp 升级 A/B）、`gguf_types`（GGUF 张量体检）
-- **tools/**（13）`check_records_v2`、`run_tests`、`eval_rerank`、
+- **tools/**（16）`check_records_v2`、`run_tests`、`eval_rerank`、
   **`pareto_front`（2026-11-18：(中位延迟, 选重率) 帕累托前沿，可 `--metric
   err|honest|prod`、可选 ctx 池化）**、**`plot_latency`（②③ 的 2×2 拼图，部署档 Q4_K_M）**、
   **`fit_prefill`（T_prefill 线性拟合 + ctx* 选择：<150ms 且 ≤20；`--extra` 可拟合量化变体）**、
@@ -54,12 +54,17 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   `precommit_conf_report`（2026-11-23：「确定前缀预提交」模式效果研究——
   真实引擎取头候选 → LLM 词级 CE → margin→准确率/覆盖率/按键成本；
   结论见设计文档 §十）**、
-  **`sentence_gen_gram` / `sgen_llm_rerank`（2026-11-23：组句候选生成 + LLM
-  句级重排——任意 Rime 格式 `.gram`（万象 LTS / 官方八股文 bgw / 千问内置）
-  + 万象词库词级 beam 生成 top-5：万象两区命中率 71%/62%（词表内 83%/85%）、
-  官方 67%/53%、千问 54%/46%；LLM 整句 CE 重排 top-1 万象 64%/57%、官方
-  62%/49%、千问 50%/43%；配套 `cpp/sent_score.cpp`（整句 CE 打分，链接同一
-  llama 静态库）；结论见设计文档 §十一）**
+  **`sentence_gen_gram` / `sgen_llm_rerank` / `sgen_llm3_rerank`（2026-11-23：
+  组句候选生成 + LLM 句级重排——任意 Rime 格式 `.gram`（万象 LTS / 官方
+  八股文 bgw / 千问内置）+ 万象词库词级 beam 生成 top-5：万象两区命中率
+  71%/62%（词表内 83%/85%）、官方 67%/53%、千问 54%/46%；LLM 整句 CE 重排
+  top-1 万象 64%/57%、官方 62%/49%、千问 50%/43%；`sgen_llm3_rerank` 用生产
+  DLL 的 3-token 加权 CE 做安全基线（万象 56%/41%，明显弱于全句）；配套
+  `cpp/sent_score.cpp`（整句 CE 打分，链接同一 llama 静态库）；结论见设计
+  文档 §十一）**、
+  **`sgen_latency.lua` / `sgen_latency.py`（2026-11-23：5 个组句候选的评分
+  延迟基准——生产 3-token vs 插件新增 `llm.score_full` 整句 CE；199 句语料，
+  8 线程 p50 65.5 / 252.2 ms，全句约 25ms/候选 token；结论见设计文档 §11.7）**
 
 ## 约定
 
