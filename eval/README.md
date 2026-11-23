@@ -62,6 +62,12 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   DLL 的 3-token 加权 CE 做安全基线（万象 56%/41%，明显弱于全句）；配套
   `cpp/sent_score.cpp`（整句 CE 打分，链接同一 llama 静态库）；结论见设计
   文档 §十一）**、
+  **`sentence_gen_gram --lm`（2026-11-23 晚：商业输入法 bigram 适配器接入——
+  `lib/wxbigram_lm.py`（微信 `lmcnmac.bin`，纯哈希表：CityHash(词对 UTF-8)
+  → 16-bit 量化条件分）、`lib/doubao_bigram_lm.py`（豆包 `sys_bigram` S6 +
+  `sys.dat` 词表，id 索引 + Katz 退避）；同口径 A/B：微信 56%/41%、
+  豆包 56%/32%（词表内 68.4/69.7）；格式推导与阻塞点见
+  `商业输入法ngram逆向-微信豆包-2026-11-23.md`）**、
   **`sgen_latency.lua` / `sgen_latency.py`（2026-11-23：5 个组句候选的评分
   延迟基准——生产 3-token vs 插件新增 `llm.score_full` 整句 CE；199 句语料，
   8 线程 p50 65.5 / 252.2 ms；同日两路合并到同一 context 后 56.2 / 200.1 ms，

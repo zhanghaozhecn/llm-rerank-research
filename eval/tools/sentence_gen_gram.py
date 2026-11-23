@@ -332,7 +332,20 @@ def fmt_summary(s, topk):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--gram", required=True, help="万象 LTS .gram 模型")
+    ap.add_argument("--gram", default=None, help="万象 LTS .gram 模型")
+    ap.add_argument("--lm", default=None,
+                    help="外部 LM 适配器：微信 lmcnmac.bin 直接给路径；"
+                         "豆包写 'doubao:<sys_bigram>|<sys.dat>'"
+                         "（路径含盘符冒号，故内部用 | 分隔）。与 --gram 二选一")
+    ap.add_argument("--wx-miss", type=float, default=-6.0,
+                    help="--lm 微信模式的 miss 罚分（默认 -6.0）")
+    ap.add_argument("--db-k", type=float, default=0.0,
+                    help="--lm 豆包模式的 Katz 退避常数 K（成本×100，默认 0）")
+    ap.add_argument("--db-bias", type=float, default=500.0,
+                    help="--lm 豆包模式命中分偏置（引擎 score=(u>>20)-1000 的 "
+                         "1000；A 区标定最优 500，默认 500）")
+    ap.add_argument("--db-miss", type=float, default=-9.0,
+                    help="--lm 豆包模式 w2 不在其词表时的罚分（默认 -9.0）")
     ap.add_argument("--dict-dir", required=True,
                     help="万象 dicts 目录（zi/jichu/... .dict.yaml）")
     ap.add_argument("--segments", default=os.path.join(
@@ -359,14 +372,18 @@ def main():
 
     t0 = time.time()
     print("[1/4] grammar model ...", flush=True)
-    gram = WanxiangGram(a.gram, max_len=a.max_len, min_len=a.min_len,
-                        collocation_penalty=a.coll_penalty,
-                        non_collocation_penalty=a.non_coll_penalty,
-                        weak_collocation_penalty=a.weak_penalty,
-                        rear_penalty=a.rear_penalty)
-    print("  sections=%s  %.1fs"
-          % ([(s[0], s[3]) for s in gram.sections], time.time() - t0),
-          flush=True)
+    gram = None
+    if a.gram:
+        gram = WanxiangGram(a.gram, max_len=a.max_len, min_len=a.min_len,
+                            collocation_penalty=a.coll_penalty,
+                            non_collocation_penalty=a.non_coll_penalty,
+                            weak_collocation_penalty=a.weak_penalty,
+                            rear_penalty=a.rear_penalty)
+        print("  sections=%s  %.1fs"
+              % ([(s[0], s[3]) for s in gram.sections], time.time() - t0),
+              flush=True)
+    else:
+        print("  (skip: --lm mode)", flush=True)
 
     print("[2/4] lexicon ...", flush=True)
     readings = load_lexicon(a.dict_dir)
@@ -374,12 +391,27 @@ def main():
     print("  words=%d codes=%d  %.1fs"
           % (len(readings), len(code2words), time.time() - t0), flush=True)
 
+    if a.lm:
+        print("[2.5/4] lm adapter ...", flush=True)
+        if a.lm.startswith("doubao:"):
+            from doubao_bigram_lm import DoubaoBigramLM
+            big_p, sys_p = a.lm[len("doubao:"):].split("|", 1)
+            gram = DoubaoBigramLM(big_p, sys_p, vocab=set(readings.keys()),
+                                  miss_penalty=a.db_miss, backoff_K=a.db_k,
+                                  bias=a.db_bias)
+        else:
+            from wxbigram_lm import WxBigramLM
+            gram = WxBigramLM(a.lm, vocab=set(readings.keys()),
+                              miss_penalty=a.wx_miss)
+        print("  %s  %.1fs" % (gram.version_note(), time.time() - t0),
+              flush=True)
+
     print("[3/4] sentences ...", flush=True)
     sents = pick_sentences(a.segments, a.test_skip, a.test_articles,
                            a.min_words, a.max_words, a.sentences,
                            ctx_chars=a.ctx_tail)
     items = prep_sentences(sents, readings, code2words, a.min_weight)
-    scorer = GramScorer(gram, max_len=a.max_len)
+    scorer = GramScorer(gram, max_len=13 if a.lm else a.max_len)
     print("  sentences=%d (encoded %d)  %.1fs"
           % (len(sents), len(items), time.time() - t0), flush=True)
 
@@ -411,10 +443,15 @@ def main():
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
     with open(base + ".report.txt", "w", encoding="utf-8") as f:
-        f.write("gram=%s dict=%s beam=%d topk=%d ctx_tail=%d params=%s\n"
-                % (a.gram, a.dict_dir, a.beam, a.topk, a.ctx_tail,
+        f.write("gram=%s lm=%s dict=%s beam=%d topk=%d ctx_tail=%d params=%s\n"
+                % (a.gram, getattr(a, "lm", None), a.dict_dir, a.beam,
+                   a.topk, a.ctx_tail,
                    [a.max_len, a.min_len, a.coll_penalty, a.non_coll_penalty,
                     a.weak_penalty, a.rear_penalty]))
+        if a.lm:
+            f.write("lm stats: %s | query=%d hit_ctx=%d hit_char=%d\n"
+                    % (gram.version_note(), gram.n_query, gram.n_hit1,
+                       gram.n_hit2))
         f.write(fmt_summary(s, a.topk) + "\n")
         f.write("elapsed %.1fs\n" % (time.time() - t0))
     print("\nout: %s.test.jsonl / .report.txt  (%.1fs)"
