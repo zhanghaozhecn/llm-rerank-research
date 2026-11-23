@@ -11,7 +11,7 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
 
 ## 目录与脚本
 
-- **lib/**（9）共享模块，均可 import 亦可直接运行：
+- **lib/**（10）共享模块，均可 import 亦可直接运行：
   `corpus_std`（口径单源: PROJ/EVAL、词典/语料解析、FormulaReplay、
   window_key、CE 缓存规范）、`summary_4x4`（4×4 终表 + cohort_matrices/
   user_matrices/build_ce_matrix）、`derive_pairfix_ratio`（load_w2codes/
@@ -19,7 +19,9 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   `calibrate_model`（kCeW×β 标定，`--protocol split|4half`）、
   `cohort_layer1_feat`（layer_eval）、`prep_cohort`（队列模拟引擎）、
   `pairfix_pron`（读音证据库）、`audit_xlsx`（TSV↔XLSX）、
-  **`gguf_bpe`（2026-11-18：GGUF 词表复刻的字节级 BPE，选 3-token 候选/量 ctx 覆盖）**
+  **`gguf_bpe`（2026-11-18：GGUF 词表复刻的字节级 BPE，选 3-token 候选/量 ctx 覆盖）**、
+  **`wxgram`（2026-11-23：万象 LTS `.gram` 纯 Python 读取——Rime::Grammar/1.0
+  与 DartsGrammar/3 双格式、Darts 双数组 lookup、`Octagram::Query` 复刻）**
 - **prep/**（7）语料/队列/用户域准备：`build_segment_cache`、
   `cohort_unigram`、`hanlp_seg_worker`（HanLP 常驻子进程, 由
   corpus_std.ensure_segment_cache 拉起）、`prep_cohort_full`（全枚举链）、
@@ -41,7 +43,7 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   `--metric total|prep|step23` 分别给整窗/预填充/候选段，逐窗 SIM_* 计时）**、
   **`latency_grid`（ctx×k×设备的分位延迟，均值口径）**、
   `ab_upgrade`（llama.cpp 升级 A/B）、`gguf_types`（GGUF 张量体检）
-- **tools/**（11）`check_records_v2`、`run_tests`、`eval_rerank`、
+- **tools/**（13）`check_records_v2`、`run_tests`、`eval_rerank`、
   **`pareto_front`（2026-11-18：(中位延迟, 选重率) 帕累托前沿，可 `--metric
   err|honest|prod`、可选 ctx 池化）**、**`plot_latency`（②③ 的 2×2 拼图，部署档 Q4_K_M）**、
   **`fit_prefill`（T_prefill 线性拟合 + ctx* 选择：<150ms 且 ≤20；`--extra` 可拟合量化变体）**、
@@ -51,7 +53,13 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   **`precommit_conf_collect` / `precommit_conf_score.lua` /
   `precommit_conf_report`（2026-11-23：「确定前缀预提交」模式效果研究——
   真实引擎取头候选 → LLM 词级 CE → margin→准确率/覆盖率/按键成本；
-  结论见设计文档 §十）**
+  结论见设计文档 §十）**、
+  **`sentence_gen_gram` / `sgen_llm_rerank`（2026-11-23：组句候选生成 + LLM
+  句级重排——任意 Rime 格式 `.gram`（万象 LTS / 官方八股文 bgw / 千问内置）
+  + 万象词库词级 beam 生成 top-5：万象两区命中率 71%/62%（词表内 83%/85%）、
+  官方 67%/53%、千问 54%/46%；LLM 整句 CE 重排 top-1 万象 64%/57%、官方
+  62%/49%、千问 50%/43%；配套 `cpp/sent_score.cpp`（整句 CE 打分，链接同一
+  llama 静态库）；结论见设计文档 §十一）**
 
 ## 约定
 
