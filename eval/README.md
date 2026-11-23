@@ -71,7 +71,12 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   **`sgen_latency.lua` / `sgen_latency.py`（2026-11-23：5 个组句候选的评分
   延迟基准——生产 3-token vs 插件新增 `llm.score_full` 整句 CE；199 句语料，
   8 线程 p50 65.5 / 252.2 ms；同日两路合并到同一 context 后 56.2 / 200.1 ms，
-  回归 `51.0 + 3.99×Σtoken`；结论见设计文档 §11.7，跨键复用测量见 §11.8）**
+  回归 `51.0 + 3.99×Σtoken`；结论见设计文档 §11.7，跨键复用测量见 §11.8）**、
+  **`ngram_parity_check.py`（2026-11-23 晚：生产组句器对拍——读留档
+  `sgen_gram_*.test.jsonl` → 跑插件版 `cpp/ngram_parity.lua`（C++ 组句器）
+  → 逐句比对 top-k 文本/分数并复算 hit@k（只数前 k 条）；全参数下
+  100/100 一致，生产裁剪参数 14–16ms/句、hit@5 73%/61%；`--t2s` 供繁体
+  方案词典口径；结论见设计文档 §11.10）**
 
 ## 约定
 
