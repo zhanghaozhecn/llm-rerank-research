@@ -64,7 +64,8 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   文档 §十一）**、
   **`sgen_latency.lua` / `sgen_latency.py`（2026-11-23：5 个组句候选的评分
   延迟基准——生产 3-token vs 插件新增 `llm.score_full` 整句 CE；199 句语料，
-  8 线程 p50 65.5 / 252.2 ms，全句约 25ms/候选 token；结论见设计文档 §11.7）**
+  8 线程 p50 65.5 / 252.2 ms；同日两路合并到同一 context 后 56.2 / 200.1 ms，
+  回归 `51.0 + 3.99×Σtoken`；结论见设计文档 §11.7，跨键复用测量见 §11.8）**
 
 ## 约定
 
