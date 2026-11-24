@@ -42,6 +42,8 @@ eval/*
 cpp/*
 !/cpp/sent_score.cpp
 !/cpp/build_sent_score.bat
+!/cpp/luna_mixed_probe.cpp
+!/cpp/build_luna_mixed_probe.bat
 
 # 工具目录内仍排除的数据/缓存形态
 __pycache__/

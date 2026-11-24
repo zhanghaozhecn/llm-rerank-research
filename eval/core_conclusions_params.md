@@ -9,6 +9,7 @@
 |---|---|
 | 融合公式 | `fused = CE + β·log1p(eff) + log(uni+1)`（CE = 负的 kCeW 加权交叉熵） |
 | β | 14.0 |
+| CE 长度项/系数复标（2026-11-24） | **无变化**：(1.0,1.10,0.60)/β14/γ1 复核为平台中心；长度归一化与线性惩罚均变差（`eval/length_formula_sweep_*`、`eval/lenformula_compare_*`） |
 | CE 位置权重 kCeW | (1.0, **1.10**, **0.60**)（第 2/3 token） |
 | 两层 k | **6**（0.5B / 0.6B）；**4**（0.8B）；2B 不用（最低档位延迟已超即时性要求，见 README 附录 A.3） |
 | 生产推荐模型 | **Qwen3-0.6B base Q4_K_M**（**2026-11-19 已切生产**：安装器 URL/默认名/默认值、lua 与 llm_filter.cc 默认、本机 pdsp.schema.yaml 均已改；0.5B base 为回退档） |

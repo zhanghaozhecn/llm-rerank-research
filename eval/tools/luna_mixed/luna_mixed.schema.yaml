@@ -1,0 +1,84 @@
+# luna_mixed.schema.yaml -- research probe schema (luna mixed-window cohort,
+# 2026-11-24). Equal to the real-machine luna_pinyin schema minus llm_filter
+# and the stroke reverse lookup, with lua_filter@dump_span appended so the
+# headless probe can read candidate spans. Lives only in the probe's own user
+# directory (fresh userdb); never deployed to the real machine.
+schema:
+  schema_id: luna_mixed
+  name: 朙月拼音·混合窗探针
+  version: '0.26'
+
+switches:
+  - name: ascii_mode
+    reset: 0
+  - name: full_shape
+    states: [ 半角, 全角 ]
+  - name: simplification
+    reset: 1
+    states: [ 漢字, 汉字 ]
+  - name: ascii_punct
+    states: [ 。，, ．， ]
+
+engine:
+  processors:
+    - ascii_composer
+    - recognizer
+    - key_binder
+    - speller
+    - punctuator
+    - selector
+    - navigator
+    - express_editor
+  segmentors:
+    - ascii_segmentor
+    - matcher
+    - abc_segmentor
+    - punct_segmentor
+    - fallback_segmentor
+  translators:
+    - punct_translator
+    - table_translator@custom_phrase
+    - script_translator
+  filters:
+    - simplifier
+    - uniquifier
+    # '*' = the lua module itself is the filter function (same form as the
+    # plugin's lua_filter@*llm_filter); without it librime-lua looks for a
+    # function named dump_span *inside* the module, finds nothing, and the
+    # engine ends up with zero candidates.
+    - lua_filter@*dump_span
+
+speller:
+  alphabet: zyxwvutsrqponmlkjihgfedcba
+  delimiter: " '"
+  algebra:
+    __patch:
+      - pinyin:/abbreviation
+      - pinyin:/spelling_correction
+      - pinyin:/key_correction
+
+translator:
+  dictionary: luna_pinyin
+  preedit_format:
+    - xform/([nl])v/$1ü/
+    - xform/([nl])ue/$1üe/
+    - xform/([jqxy])v/$1u/
+
+custom_phrase:
+  dictionary: ""
+  user_dict: custom_phrase
+  db_class: stabledb
+  enable_completion: false
+  enable_sentence: false
+  initial_quality: 1
+
+punctuator:
+  import_preset: symbols
+
+key_binder:
+  import_preset: default
+
+recognizer:
+  import_preset: default
+  patterns:
+    punct: '^/([0-9]0?|[A-Za-z]+)$'

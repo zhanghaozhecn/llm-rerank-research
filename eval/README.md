@@ -28,13 +28,25 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   `prep_user_sc`、`build_user_corpus`、`user_corpus_eval`
 - **ce/**（1）`run_ce_cohort` = CE 跑批统一入口：anchors/samples/input
   三源 × 分片/线程池并行 × 断点续跑 × `--seed-from` 旧链播种
-- **calib/**（7）标定与首选率：`analyze_sc`（单字/词码对 5 合 1）、
+- **calib/**（13）标定与首选率：`analyze_sc`（单字/词码对 5 合 1）、
   `analyze_sel_by_code`、`grid_ctx_cand`（ctx×候选数网格，生产参数）、
   `compare_models`（多模型同窗对照）、`fusion_joint`（单格联合扫参）、
   **`fusion_sweep_all`（2026-11-18：逐 (模型,ctx,k) 全网格扫参，
   输出 err / honest(split-half) / err_prod）**、
   **`matrix_2x2`（2026-11-20：LLM×词频四格（引擎序/层1/纯CE/两层融合），
-  `--ce` 传完整 CE 目录名，固定生产点参数，双链可复算）**
+  `--ce` 传完整 CE 目录名，固定生产点参数，双链可复算）**、
+  **`length_formula_sweep`（2026-11-24：CE 权重 × 长度项联合标定——F0 现行 /
+  F1 加权均值 / F2 n^α / F3 λ·n / F4 组合；复用 fusion_sweep_all 装载器）、
+  `lenformula_compare`（定点复核 / `--isolate` 固定权重隔离 α/λ）**、
+  **`build_luna_mixed`（2026-11-24：luna 混合窗 cohort——句子→逐字音节→
+  窗口网格→无头引擎探针→CE/组句/全句 CE 批补，子命令
+  sentences/windows/ce_input/gen/genfull/assemble）、`luna_mixed_lib`
+  （探针、插件 DLL 批跑、按需补算的公共件 + `luna_mixed_gen.lua` 驱动）、
+  `luna_mixed_eval`（混合窗上的排序公式族评测）、`prefix_confirm_2x2`
+  （前缀确认「窗口路径 × 句级路径」2×2：逐窗静态 + 整句打字动态仿真）、
+  `guard_syllables`（2026-11-24：前缀确认守卫标定——码数 vs 音节数，
+  按「lead 音节 × 剩余音节」出精度/K 敏感表；结论 = 剩余 ≥2 音节、
+  单音节 lead 例外 ≥1）**
 - **pairfix/**（4）现行链：`pairfix_pipeline`（SOP 驱动）、
   `derive_pairfix_full`（唯一现行推导）、`audit_tool`（batch/merge/deploy
   三合一）、`audit_review_union`（M1–M8 机械审查）

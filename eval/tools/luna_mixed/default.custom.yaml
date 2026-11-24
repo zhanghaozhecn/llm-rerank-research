@@ -1,0 +1,9 @@
+# default.custom.yaml -- probe user directory entry (luna mixed-window cohort).
+# Only the research schema is listed, so the first maintenance pass does not
+# compile the whole preset dictionary set. Everything else comes from the
+# shared default.yaml: a bare user default.yaml leaves the schema's
+# "import_preset: default" references unresolved, and the schema then fails
+# to build silently (the compiled schema is only saved after linking).
+patch:
+  schema_list:
+    - schema: luna_mixed
