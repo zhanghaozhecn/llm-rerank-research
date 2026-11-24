@@ -57,7 +57,7 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   `--metric total|prep|step23` 分别给整窗/预填充/候选段，逐窗 SIM_* 计时）**、
   **`latency_grid`（ctx×k×设备的分位延迟，均值口径）**、
   `ab_upgrade`（llama.cpp 升级 A/B）、`gguf_types`（GGUF 张量体检）
-- **tools/**（16）`check_records_v2`、`run_tests`、`eval_rerank`、
+- **tools/**（18）`check_records_v2`、`run_tests`、`eval_rerank`、
   **`pareto_front`（2026-11-18：(中位延迟, 选重率) 帕累托前沿，可 `--metric
   err|honest|prod`、可选 ctx 池化）**、**`plot_latency`（②③ 的 2×2 拼图，部署档 Q4_K_M）**、
   **`fit_prefill`（T_prefill 线性拟合 + ctx* 选择：<150ms 且 ≤20；`--extra` 可拟合量化变体）**、
@@ -90,7 +90,25 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   `sgen_gram_*.test.jsonl` → 跑插件版 `cpp/ngram_parity.lua`（C++ 组句器）
   → 逐句比对 top-k 文本/分数并复算 hit@k（只数前 k 条）；全参数下
   100/100 一致，生产裁剪参数 14–16ms/句、hit@5 73%/61%；`--t2s` 供繁体
-  方案词典口径；结论见设计文档 §11.10）**
+  方案词典口径；结论见设计文档 §11.10）**、
+  **`llm_gen_a_index.py` / `llm_gen_a_eval.py`（2026-11-24 夜：**A 路线**——
+  拼音约束的 LLM 直接组句，不要 gram、不要 1.7M 词库。索引 = 词表 token 的
+  「拼音字母串 → id」（读音取万象单字条、剔叹词野读音、只留简体）；评估 =
+  整句/首词/字级 + **约束合规校验**（生成文本拼音逐字母等于输入码）。
+  配套 `cpp/llm_gen_a.cpp`（约束 beam search，GPU；另有 `dump-vocab` /
+  `selftest` / `next-top` / `mass` / `path-logp` / `beam-ref` 探查模式）与
+  `cpp/bench_llm_gen.cpp`（纯延迟基准）。
+  **实测（A/B 各 100 句，DIV=4 落点分组 beam）：hit@1 69/63%、hit@5 84/74%、
+  首词 89/86%、字级 94.7/91.4%——全面超过 N-gram（50/40、71/62、83/85、85/86）；
+  `lead_p≥0.95` 首词精度 95.7/91.9%（同精度覆盖率 70/89%，gram 门仅 42%）。
+  代价 = 0.62–0.85s/句（gram 14–16ms CPU）。**注意**：初版曾因两个搜索 bug
+  （完成态被丢 + 全局 top-B 压掉长 token 假设）误判为负结论，修正与证据见
+  研究库 `freq-fusion-research.md`「2026-11-24 夜（三）」。
+  **逐键增量**（`type` 模式，跨键复用前缀 KV）：K=1/rowcap8 每键 40ms（p50 18 /
+  p95 80）但 hit@1 掉到 47%；K=2/rowcap24 每键 107ms、54%——质量与延迟强冲突，
+  最优形态是 gram 管逐键、A 路线管异步句末。
+  **2026-11-24 用户定案：结论记录在案、不采用**（理由 = 逐键延迟进不了按键路径；
+  现行架构不变）**
 
 ## 约定
 
