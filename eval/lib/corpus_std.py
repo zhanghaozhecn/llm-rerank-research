@@ -647,6 +647,17 @@ RETRACT_KINDS = {"backspace", "delete", "undo-clipboard"}
 BOUNDARY_KINDS = {"scene", "focus", "navigation", "enter"}
 
 
+def is_nofreq(ev):
+    """W 行是否"无上文/词频融合"窗（2026-11-24 起 flags 含 `nofreq`）。
+
+    这类窗 status=ok、有 window/final，但**窗内没有 CE**（融合只剩
+    β·log1p(eff) + log(uni+1)，词码对修正不参与），debug D 行 ce=-inf。
+    CE/融合分/名次算术类分析必须剔除（或单独统计），否则会拿 -inf 当
+    数值、把"无 CE"误报成"评分失败"。
+    """
+    return ev.get("type") == "W" and "nofreq" in (ev.get("flags") or "")
+
+
 def iter_commits(path=None, include_retracted=True, reset_mode="strict"):
     """C 行 + retracted 标记 + 关联 W 的 engine/window/final。
 

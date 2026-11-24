@@ -173,6 +173,7 @@ def main():
     n_ok = n_correct = n_moved_ok = n_broken = 0
     total_ms, prep_ms = [], []
     n_ctxchk = 0
+    n_nofreq = 0            # 无上文窗（flags=nofreq）：无 CE，跳过 CE 算术校验
     ref_gap = []            # (C id, word, code, linked W id) 验收链断（带标点提交 ref 空）
     retracted_sess = [c for c in session if c["retracted"]]
 
@@ -249,6 +250,11 @@ def main():
                 if "prep" in P[w["id"]]:
                     prep_ms.append(P[w["id"]]["prep"])
             dl = D.get(w["id"], {})
+            # 无上文窗（2026-11-24 flags=nofreq）：窗内无 CE，D 行 ce=-inf、
+            # key 只含词频项 → CE/融合/cerank 算术校验会拿 -inf 当数值误报。
+            nofreq = CS.is_nofreq(w)
+            if nofreq:
+                n_nofreq += 1
             if dl and w["status"] == "ok":
                 if len(dl) != len(w["window"]):
                     defects.append((w["id"], f"D 行数 {len(dl)} ≠ 窗宽 {len(w['window'])}"))
@@ -257,26 +263,29 @@ def main():
                 for r, f in sorted(dl.items()):
                     # -inf = 候选 token 数不足该位（缺位不计入加权；生产语义）
                     fin = lambda v: v if isinstance(v, float) and math.isfinite(v) else 0.0
-                    ce_exp = -(fin(f["ce1"]) + W2 * fin(f["ce2"]) + W3 * fin(f.get("ce3", float("nan"))))
-                    if abs(ce_exp - f["ce"]) > 0.02:
-                        defects.append((w["id"], f"r{r} ce 算术 {ce_exp:.3f}≠{f['ce']:.3f}"))
+                    if not nofreq:
+                        ce_exp = -(fin(f["ce1"]) + W2 * fin(f["ce2"]) + W3 * fin(f.get("ce3", float("nan"))))
+                        if abs(ce_exp - f["ce"]) > 0.02:
+                            defects.append((w["id"], f"r{r} ce 算术 {ce_exp:.3f}≠{f['ce']:.3f}"))
                     if isinstance(f.get("eff"), float) and math.isfinite(f["eff"]):
                         fb_exp = BETA * math.log1p(max(0.0, f["eff"]))
                         if abs(fb_exp - f["fb"]) > 0.02:
                             defects.append((w["id"], f"r{r} fb 算术 {fb_exp:.3f}≠{f['fb']:.3f}"))
-                    k_exp = f["ce"] + f["fb"] + f["u1"] + f.get("sdelta", 0.0)
-                    if abs(k_exp - f["key"]) > 0.02:
-                        defects.append((w["id"], f"r{r} key 算术 {k_exp:.3f}≠{f['key']:.3f}"))
+                    if not nofreq:
+                        k_exp = f["ce"] + f["fb"] + f["u1"] + f.get("sdelta", 0.0)
+                        if abs(k_exp - f["key"]) > 0.02:
+                            defects.append((w["id"], f"r{r} key 算术 {k_exp:.3f}≠{f['key']:.3f}"))
                     if f["key"] > prev_key + 1e-6:
                         defects.append((w["id"], f"r{r} key {f['key']:.3f} > 前行 {prev_key:.3f}（final 序非 key 降序）"))
                     prev_key = f["key"]
                     if int(f["finrank"]) != r:
                         defects.append((w["id"], f"r{r} finrank {f['finrank']:g} ≠ 行号"))
-                ces = {r: dl[r]["ce"] for r in dl}
-                corder = sorted(ces, key=lambda r: (-ces[r], r))
-                for r, f in dl.items():
-                    if int(f["cerank"]) != corder.index(r) + 1:
-                        defects.append((w["id"], f"r{r} cerank {f['cerank']:g} ≠ {corder.index(r)+1}"))
+                if not nofreq:
+                    ces = {r: dl[r]["ce"] for r in dl}
+                    corder = sorted(ces, key=lambda r: (-ces[r], r))
+                    for r, f in dl.items():
+                        if int(f["cerank"]) != corder.index(r) + 1:
+                            defects.append((w["id"], f"r{r} cerank {f['cerank']:g} ≠ {corder.index(r)+1}"))
         elif RE4.match(c["code"]):
             rowcls = "无W异常"
             cls["异常·纯4码无W"] += 1
@@ -427,6 +436,9 @@ def main():
     L.append(f"  合计                       {len(session)}")
     if skip_cls:
         L.append("  W skip 分布: " + ", ".join(f"{k}×{v}" for k, v in skip_cls.most_common()))
+    if n_nofreq:
+        L.append(f"  无上文窗（flags=nofreq）×{n_nofreq}：无 CE，已跳过 CE/融合算术校验"
+                 "（名次与 final 置换校验仍生效）")
     if n_ok:
         L.append("")
         L.append("── 重排质量（含带标点回挂恢复）──")

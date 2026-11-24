@@ -13,7 +13,9 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
 
 - **lib/**（10）共享模块，均可 import 亦可直接运行：
   `corpus_std`（口径单源: PROJ/EVAL、词典/语料解析、FormulaReplay、
-  window_key、CE 缓存规范）、`summary_4x4`（4×4 终表 + cohort_matrices/
+  window_key、CE 缓存规范、**`is_nofreq`**——2026-11-24：W 行 `flags`
+  含 `nofreq` = 无上文窗，窗内无 CE，CE/融合分/名次算术分析须剔除或
+  单独统计）、`summary_4x4`（4×4 终表 + cohort_matrices/
   user_matrices/build_ce_matrix）、`derive_pairfix_ratio`（load_w2codes/
   load_domain/FADE 库；**load_domain 的累计项按词+码计数 = 生产口径**）、
   `calibrate_model`（kCeW×β 标定，`--protocol split|4half`）、
