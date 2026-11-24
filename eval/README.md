@@ -47,8 +47,8 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   `luna_mixed_eval`（混合窗上的排序公式族评测）、`prefix_confirm_2x2`
   （前缀确认「窗口路径 × 句级路径」2×2：逐窗静态 + 整句打字动态仿真）、
   `guard_syllables`（2026-11-24：前缀确认守卫标定——码数 vs 音节数，
-  按「lead 音节 × 剩余音节」出精度/K 敏感表；结论 = 剩余 ≥2 音节、
-  单音节 lead 例外 ≥1）**
+  按「lead 音节 × 剩余音节」出精度/K 敏感表；结论 = 剩余 ≥2 音节、单字 lead 无例外
+  ——2026-11-24 真机定案）**
 - **pairfix/**（4）现行链：`pairfix_pipeline`（SOP 驱动）、
   `derive_pairfix_full`（唯一现行推导）、`audit_tool`（batch/merge/deploy
   三合一）、`audit_review_union`（M1–M8 机械审查）

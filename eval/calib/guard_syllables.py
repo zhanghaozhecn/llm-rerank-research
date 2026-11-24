@@ -184,6 +184,11 @@ def main():
         ("余≥2，单字 lead 例外（余≥1）",
          lambda r: guard(r, 2, 2) or (r["slead"] == 1 and guard(r, 2, 1))),
         ("总≥2 ∧ 余≥3", lambda r: guard(r, 2, 3)),
+        # 2026-11-24 真机定案候选：单字 lead 不确认（下载类 2 字词被拆）
+        ("lead≥2 ∧ 余≥2（单字不确认）",
+         lambda r: r["slead"] >= 2 and guard(r, 2, 2)),
+        ("lead≥2 ∧ 余≥1", lambda r: r["slead"] >= 2 and guard(r, 2, 1)),
+        ("总≥2 ∧ 余≥2（= 去掉单字余1）", lambda r: guard(r, 2, 2)),
     )
     print(f"{'规则':<28}{'触发':>7}{'精度':>9}{'召回':>9}{'K=2':>8}{'K=5':>8}{'K=12':>8}")
     for name, sel in rules:
