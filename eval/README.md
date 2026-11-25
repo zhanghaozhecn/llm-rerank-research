@@ -105,6 +105,12 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   取 P(读音|字)；按最小 share 分桶 + 5 个特征进模型。结论 = 近 1:1 档最差
   （92.86%，与用户提醒一致）但只占 0.3%，加特征无增量；
   `ss_cf_gap`（字频差）同样无增益，已回退）**、
+  **`wm_budget`（2026-11-26：字词模式 CE2+CE3 总预算重放——层1 序、1-token
+  免费；B=4/6/8/9/12 选重率 3.42/3.15/3.02/2.96/2.96%，B≥9 贴全池上限、
+  B=12 = 旧 6 候选；总预算 4–18 全表在输出）**、
+  **成本实测 `eval/tools/score_bench*.lua` / `ce_bench.lua`（2026-11-26：
+  1-token 候选 0–1ms、多 token 按首 token 成行 ≈8.5ms/行、64 真实候选
+  285ms；Step2/3 归一化改为按行一次后同词 64 条 205→38ms）**、
   **`confirm_by_position`（2026-11-25：现行 53 特征门按「句内第 x 个词」的
   确认率/正确率——OOF 分数 ≥ τ ∧ p≥0.5 ∧ 非 ta；x 由 sentences.jsonl 的
   HanLP segs 定。wiki 14,165 窗 → 10,858 确认（76.7%）/ 99.18%，确认率
