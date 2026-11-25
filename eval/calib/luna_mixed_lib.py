@@ -75,9 +75,9 @@ def jsonl_iter(path):
                 yield json.loads(line)
 
 
-def prepare_probe_user():
+def prepare_probe_user(work=None):
     """探针用户目录 = 研究方案 + lua 滤镜 + default.custom（全新 userdb）。"""
-    user = WORK / "user"
+    user = Path(work or WORK) / "user"
     (user / "lua").mkdir(parents=True, exist_ok=True)
     for name in ("luna_mixed.schema.yaml", "default.custom.yaml"):
         shutil.copy2(PROBE_SRC / name, user / name)
@@ -85,13 +85,15 @@ def prepare_probe_user():
     return user
 
 
-def run_probe(codes):
+def run_probe(codes, work=None):
     """码串 → 引擎原序候选 [[text, start, end, quality, type], ...]（≤K_PROBE）。
-    结果按（码串清单 md5 + 条数上限）缓存，重跑构建不重复枚举（45k 码 ≈ 5 分钟）。"""
-    user = prepare_probe_user()
-    WORK.mkdir(parents=True, exist_ok=True)
-    fin = WORK / "probe_codes.txt"
-    fout = WORK / "probe_out.tsv"
+    结果按（码串清单 md5 + 条数上限）缓存，重跑构建不重复枚举（45k 码 ≈ 5 分钟）。
+    work 可指定独立工作目录（多 cohort 共用入口时不互相踩缓存）。"""
+    work = Path(work or WORK)
+    user = prepare_probe_user(work)
+    work.mkdir(parents=True, exist_ok=True)
+    fin = work / "probe_codes.txt"
+    fout = work / "probe_out.tsv"
     stamp = WORK / "probe_out.md5"
     with open(fin, "w", encoding="ascii", newline="\n") as f:
         for c in codes:
@@ -155,7 +157,7 @@ def log_msg(msg):
     print("[lm]", msg, flush=True)
 
 
-def run_gen(jobs):
+def run_gen(jobs, out=None, tried=None):
     """N-gram 组句（生产参数）。jobs = [(wid, ctx, code)] → gen.tsv 追加。
     行：wid \t rank \t ngram 分 \t lead \t lead_end \t 词表(end:word;…) \t text
 
@@ -163,29 +165,33 @@ def run_gen(jobs):
     返回空 ⇒ 这些窗在 gen.tsv 里没有任何行。**"没有行"≠"没跑过"**，故另记
     `gen_tried.txt`：跑过但为空的窗，分析侧必须当成 gen=[]（句级路径不可用），
     而不是当成数据缺口。"""
-    tried = load_gen_tried()
-    done = {r[0] for r in load_gen_raw()}
-    todo = [(w, c, k) for (w, c, k) in jobs if w not in done and w not in tried]
+    out = Path(out or GEN)
+    tried = Path(tried or GEN_TRIED)
+    tried_set = set(tried.read_text(encoding="ascii").split()) \
+        if tried.exists() else set()
+    done = {r[0] for r in load_gen_raw(out)}
+    todo = [(w, c, k) for (w, c, k) in jobs
+            if w not in done and w not in tried_set]
     if not todo:
         return 0
-    WORK.mkdir(parents=True, exist_ok=True)
-    jf = WORK / "gen_jobs.tsv"
+    tried.parent.mkdir(parents=True, exist_ok=True)
+    jf = tried.parent / (tried.stem + "_jobs.tsv")
     with open(jf, "w", encoding="utf-8", newline="\n") as f:
         for w, c, k in todo:
             ctx = c.replace("\t", " ").replace("\n", " ")
             f.write(f"{w}\t{ctx}\t{k}\n")
-    cache = WORK / "ngram_lex.bin"
+    cache = Path(tried).parent / "ngram_lex.bin"
     if not cache.exists() and (RIME_USER / "llm_rerank" / "ngram_lex" /
                                "luna_pinyin.bin").exists():
         shutil.copy2(RIME_USER / "llm_rerank" / "ngram_lex" / "luna_pinyin.bin",
                      cache)
     run_lua(HERE / "luna_mixed_gen.lua", {
-        "LM_MODE": "gen", "LM_JOBS": jf, "LM_OUT": GEN,
+        "LM_MODE": "gen", "LM_JOBS": jf, "LM_OUT": out,
         "LM_MODEL": MODEL, "LM_THREADS": LUA_THREADS,
         "LM_GRAM": NGRAM_DIR / "wanxiang-lts-zh-hans.gram",
         "LM_DICT": NGRAM_DIR / "dicts", "LM_FILES": ",".join(NGRAM_FILES),
         "LM_CACHE": cache, "LM_PARAMS": NGRAM_PARAMS})
-    with open(GEN_TRIED, "a", encoding="ascii") as f:
+    with open(tried, "a", encoding="ascii") as f:
         for w, _, _ in todo:
             f.write(w + "\n")
     return len(todo)
@@ -217,12 +223,13 @@ def run_full(jobs):
     return len(todo)
 
 
-def load_gen_raw():
+def load_gen_raw(path=None):
     """gen.tsv 原始行 [(wid, rank, nscore, lead, lead_end, words, text)]。"""
-    if not GEN.exists():
+    path = Path(path or GEN)
+    if not path.exists():
         return []
     rows = []
-    with open(GEN, encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             fl = line.rstrip("\n").split("\t")
             if len(fl) != 7:

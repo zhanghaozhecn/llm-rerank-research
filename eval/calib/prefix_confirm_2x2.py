@@ -106,14 +106,17 @@ class Store:
 
         # 融合（生产：score + β·log1p(eff) + u1；冷账本后两项为 0。
         # score = -(kCeW·ce 三分量)，不可算分量（哨兵 -1）不参与）
+        # 2026-11-25 修：按 ntok 截断，哨兵 -1.0 不再被当数值加进和里
         score = {}
         for i in window:
             c3 = ce.get(texts[i])
             if c3 is None:
                 continue
+            nt = c3[1] if c3[1] else sum(
+                1 for x in c3[0] if x is not None and x > -1e8)
             s = 0.0
-            for k in range(3):
-                x = c3[0][k] if k < len(c3[0]) else -1.0
+            for k in range(min(int(nt), 3)):
+                x = c3[0][k] if k < len(c3[0]) else None
                 if x is not None and x > -1e8:
                     s += KCE[k] * x
             score[i] = -s

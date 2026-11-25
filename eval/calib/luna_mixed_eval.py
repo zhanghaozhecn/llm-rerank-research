@@ -60,10 +60,12 @@ def load(k_pool=16, k_probe=32):
     d["tlen"] = z((n, k_probe), 0, int)
     d["endp"] = z((n, k_probe), 0, int)
     d["isgen"] = z((n, k_probe), False, bool)
+    d["gshow"] = z((n, k_probe), False, bool)   # 仅显示置顶的组句第 1 条
     d["has_ce"] = z((n, k_probe), False, bool)
     d["etype"] = [[None] * k_probe for _ in range(n)]
     for i, r in enumerate(rows):
         gset = {g[0] for g in r["gen"]}
+        gshow_text = r["gen"][0][0] if r["gen"] else None
         ce = {c[0]: c[5:7] for c in r["eng"][:k_pool]}
         for j, c in enumerate(cands.get(r["code"], [])[:k_probe]):
             text, s, e, typ, q = c
@@ -72,6 +74,7 @@ def load(k_pool=16, k_probe=32):
             d["tlen"][i, j] = len(text)
             d["endp"][i, j] = e
             d["isgen"][i, j] = text in gset
+            d["gshow"][i, j] = (text == gshow_text)
             d["etype"][i][j] = typ
             ce3, ntok = ce.get(text, (None, None))
             if ce3:
