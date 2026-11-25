@@ -11,10 +11,11 @@
 
 口径（与 2026-11-25 研究一致）：
   特征 = 46 个里的 **41 个可部署项**（去掉 m / n_syl_typed / partial_syl /
-  n_syl_total / is_user——前四个要引擎音节切分、is_user 要域信息）；
-  模型 = LightGBM 300 树 / 15 叶（研究最优档，同触发量 98.27%）；
-  τ = **OOF 分数**在触发集上的 90% 分位（避免 in-sample 高估；
-  90% 量下 OOF 精度 98.56%）。
+  n_syl_total / is_user——前四个要引擎音节切分、is_user 要域信息）
+  **+ 12 项 CE 分布特征 `ss_*`**（同 span 同音簇的熵/占比/极差/margin/平局数
+  ——2026-11-25 用户指令「落地 ss12」，90% 量 99.09%→99.23%）= **53 维**；
+  模型 = LightGBM 300 树 / 15 叶；
+  τ = **OOF 分数**在触发集上的 90% 分位（避免 in-sample 高估）。
 
 跑法（研究库根目录）：
   python eval/calib/export_prefix_gate.py [--out eval/lgb]
@@ -30,9 +31,11 @@ import numpy as np
 sys.path.insert(0, "eval/calib")
 sys.stdout.reconfigure(encoding="utf-8")
 import prefix_confirm_model as M  # noqa: E402
+import ss_ce_dist as S  # noqa: E402  （load_v2：带 g 的 cohort 缓存）
 
 UNAVAIL = {"m", "n_syl_typed", "partial_syl", "n_syl_total", "is_user"}
-DEP = [c for c in M.FEATS if c not in UNAVAIL]
+# 2026-11-25 起落地 CE 分布特征（ss12）：41 可部署 + 12 分布 = 53
+DEP = [c for c in M.FEATS if c not in UNAVAIL] + M.DIST_SS
 PARAMS = dict(n_estimators=300, learning_rate=0.05, num_leaves=15,
               min_child_samples=60, subsample=0.9, subsample_freq=1,
               colsample_bytree=0.8, reg_lambda=1.0, random_state=7, verbose=-1)
@@ -41,7 +44,8 @@ TARGET_VOL = 0.90
 
 def train(rows):
     import lightgbm as lgb
-    X = np.array([[r["f"][c] for c in DEP] for r in rows], float)
+    X = np.array([[r["f"][c] if c in r["f"] else r["g"][c] for c in DEP]
+                  for r in rows], float)
     y = np.array([1 if r["ok"] else 0 for r in rows])
     clf = lgb.LGBMClassifier(**PARAMS).fit(X, y)
     oof = np.zeros(len(rows))
@@ -59,7 +63,7 @@ def train(rows):
     order = np.argsort(-oof)
     tau = float(oof[order[target - 1]])
     sel = order[:target]
-    print(f"[train] 41 特征 / {clf.booster_.num_trees()} 树；OOF τ={tau:.6f}"
+    print(f"[train] {len(DEP)} 特征 / {clf.booster_.num_trees()} 树；OOF τ={tau:.6f}"
           f" → 保留 {target}（= 现行触发 {ntrig} 的 {100*TARGET_VOL:.0f}%），"
           f"精度 {100*y[sel].mean():.2f}%（其中 p<0.95 的 "
           f"{int((~fire[sel]).sum())} 例）")
@@ -93,7 +97,7 @@ def dump_trees(clf):
 
 
 def write_lua(path, trees, tau, freq):
-    L = ["-- 前缀确认门（LightGBM 300×15，41 可部署特征）自动生成，勿手改",
+    L = ["-- 前缀确认门（LightGBM 300×15，53 特征 = 41+ss12）自动生成，勿手改",
          "-- 生成：eval/calib/export_prefix_gate.py（研究库 2026-11-25）",
          "-- feats = 特征向量顺序；f 下标 1-based（0=叶）；score∈[0,1]",
          "return {",
@@ -119,9 +123,9 @@ def write_lua(path, trees, tau, freq):
 
 
 def write_h(path, trees, tau, freq):
-    L = ["// 前缀确认门（LightGBM 300×15，41 可部署特征）自动生成，勿手改",
+    L = ["// 前缀确认门（LightGBM 300×15，53 特征 = 41+ss12）自动生成，勿手改",
          "// 生成：eval/calib/export_prefix_gate.py（研究库 2026-11-25）",
-         "// 用法：按 kFeats 顺序装 41 维特征 → 每棵树从根 1 走到 f==0 的叶，",
+         "// 用法：按 kFeats 顺序装 53 维特征 → 每棵树从根 1 走到 f==0 的叶，",
          "//       sum v[node] → p=1/(1+exp(-sum))；p >= kTau 才确认。",
          "#pragma once",
          "#include <cstdint>",
@@ -171,7 +175,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(M.L.EVAL / "lgb"))
     a = ap.parse_args()
-    rows = M.load_rows()
+    rows = S.load_v2()
     clf, tau = train(rows)
     trees = dump_trees(clf)
     cfreq = M.char_freq()

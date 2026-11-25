@@ -301,10 +301,81 @@ def featurize(w, s, gs, lead, p, le, sent, d, syls, pool, cfreq, tag):
         char_freq=lead_char_freq,
         char_freq_mean=lead_char_freq_mean,
         )
+    g = dist_feats(s, le)
     return dict(wid=w["wid"], sid=w["sid"], tag=tag, domain=w["domain"],
                 ok=ok, fire=p >= PGATE, lead=lead, lead_syl=lead_syl,
-                text=w["text"], m=w["m"], f=f, same_py=same_py,
+                text=w["text"], m=w["m"], f=f, g=g, same_py=same_py,
                 truth_prefix=w["text"][:len(lead)])
+
+
+def _ent(vals):
+    """softmax(−CE) 的熵（nats）。vals = 各候选的加权 CE 和。"""
+    if len(vals) < 2:
+        return 0.0
+    a = np.array(vals, float)
+    z = a - a.min()
+    w = np.exp(-z)                    # −CE 越大的候选权重越大
+    p = w / w.sum()
+    return float(-(p * np.log(p + 1e-12)).sum())
+
+
+def dist_feats(s, le):
+    """**CE 分布特征**（2026-11-25 用户「拓展该特征」）：把「同码段内 TOP-k 同音
+    候选的 CE 分布」显式给出来，替代现在只有 top1/top2 两个点的近似。
+
+    两组（都只用评分窗内**已有 CE** 的候选 → 生产可算）：
+      ss_*  同 span（end == lead 结尾）那一小簇同音候选上的分布——「这段码歧义
+            到什么程度、lead 在其中排第几」
+      win_* 整个评分窗上的分布——「整窗竞争有多激烈」
+    """
+    win = [i for i in s["window"] if i in s["fused"]]
+    order = s["order"]
+    i1 = order[0]
+    if len(win) < 2:
+        return dict(ss_n=float(len(win)), ss_lead_rank_w=0.0,
+                    ss_lead_rank_1=0.0, ss_wgap=0.0, ss_1gap=0.0,
+                    ss_ent=0.0, ss_pmass=1.0, ss_range=0.0,
+                    ss_top2gap=0.0, ss_best_is_lead=1.0, ss_near=0.0,
+                    ss_gap_ratio=0.0,
+                    win_ent=0.0, win_pmass=1.0, win_range=0.0,
+                    win_n=float(len(win)))
+    S = [i for i in win if s["ends"][i] == le]
+    if i1 not in S:
+        S.append(i1)
+    ce_w = {i: -s["fused"][i] for i in S}
+    ce_1 = {i: s["ce1"][i] for i in S if s["ce1"].get(i, -1.0) >= 0.0}
+    # 并列时按**文本**（码点/UTF-8 字节序，两实现一致）打破——不能用
+    # 迭代顺序当 tie-break：Lua/Python/引擎池的顺序各不相同，会让 rank 差 1
+    by_w = sorted(S, key=lambda i: (ce_w[i], s["texts"][i]))
+    by_1 = sorted(ce_1, key=lambda i: (ce_1[i], s["texts"][i]))
+    r_w = by_w.index(i1)
+    r_1 = by_1.index(i1) if i1 in ce_1 else -1.0
+    wgap = (ce_w[by_w[1]] - ce_w[i1]) if len(by_w) > 1 else 0.0
+    gap1 = (ce_1[by_1[1]] - ce_1[i1]) if (i1 in ce_1 and len(by_1) > 1) \
+        else 0.0
+    z = np.array([-ce_w[i] for i in by_w], float)
+    z -= z.max()
+    mass = np.exp(z)
+    mass /= mass.sum()
+    pos = by_w.index(i1)
+    top2 = (ce_w[by_w[1]] - ce_w[by_w[0]]) if len(by_w) > 1 else 0.0
+    aw = np.array([ce_w[i] for i in S], float)
+    allw = np.array([-s["fused"][i] for i in win], float)
+    zw = np.exp(allw - allw.max())
+    pw = zw / zw.sum()
+    # 「近似平局」计数与相对 margin：歧义的直接度量（CE 差在 1 nat 内 = 难分）
+    near = int((aw <= ce_w[i1] + 1.0).sum())
+    return dict(
+        ss_n=float(len(S)), ss_lead_rank_w=float(r_w),
+        ss_lead_rank_1=float(r_1), ss_wgap=float(wgap),
+        ss_1gap=float(gap1), ss_ent=_ent(list(ce_w.values())),
+        ss_pmass=float(mass[pos]), ss_range=float(aw.max() - aw.min()),
+        ss_top2gap=float(top2), ss_best_is_lead=1.0 if r_w == 0 else 0.0,
+        ss_near=float(near),
+        ss_gap_ratio=float(wgap / (aw.max() - aw.min() + 1e-6)),
+        win_ent=_ent([-s["fused"][i] for i in win]),
+        win_pmass=float(pw[win.index(i1)]),
+        win_range=float(allw.max() - allw.min()), win_n=float(len(win)))
 
 
 FEATS = [
@@ -319,6 +390,14 @@ FEATS = [
     "n_single", "n_same_span", "lead_single", "single_ratio", "char_freq",
     "char_freq_mean",
 ]
+
+# ── CE 分布特征（2026-11-25 扩展；生产可算，未进现行 41 特征）────────
+# ss_* = 同 span（lead 覆盖的那段码）内同音候选的 CE 分布；win_* = 整窗分布
+DIST_SS = ["ss_n", "ss_lead_rank_w", "ss_lead_rank_1", "ss_wgap", "ss_1gap",
+           "ss_ent", "ss_pmass", "ss_range", "ss_top2gap", "ss_best_is_lead",
+           "ss_near", "ss_gap_ratio"]
+DIST_WIN = ["win_ent", "win_pmass", "win_range", "win_n"]
+DIST_FEATS = DIST_SS + DIST_WIN
 
 
 def target_encode(rows_tr, rows_te, keyfn, alpha=20.0):

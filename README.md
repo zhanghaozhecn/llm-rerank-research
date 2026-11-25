@@ -13,7 +13,7 @@
 
 | 路径 | 内容 |
 |------|------|
-| `eval\` | 评测工具链（python，2026-11-18 子目录重组后 7 个子目录，明细见 `eval\README.md`）：`lib\`（10: +gguf_bpe / wxgram）、`prep\`（7）、`ce\`（run_ce_cohort）、`calib\`（20: 标定/首选率/前缀确认系列，2026-11-25 增 build_prefix_big / prefix_confirm_model / export_prefix_gate）、`pairfix\`（4）、`bench\`（6: +latency_synth / latency_grid）、`tools\`（16: +pareto_front / plot_latency / fit_prefill / 预提交与组句系列）；报告与工作数据统一落 eval 根；旧脚本归档见 `legacy-20261117\removed-scripts-20261117\` |
+| `eval\` | 评测工具链（python，2026-11-18 子目录重组后 7 个子目录，明细见 `eval\README.md`）：`lib\`（10: +gguf_bpe / wxgram）、`prep\`（7）、`ce\`（run_ce_cohort）、`calib\`（23: 标定/首选率/前缀确认系列，2026-11-25 增 build_prefix_big / prefix_confirm_model / export_prefix_gate / xgb_vs_lgb / sentence_ambiguity / ss_ce_dist）、`pairfix\`（4）、`bench\`（6: +latency_synth / latency_grid）、`tools\`（16: +pareto_front / plot_latency / fit_prefill / 预提交与组句系列）；报告与工作数据统一落 eval 根；旧脚本归档见 `legacy-20261117\removed-scripts-20261117\` |
 | `系统实验-研究叙事-2026-11-18.md` | **主线四步的研究叙事**：问题/口径 → ① 词频 → ② 上文 → ③ 候选 → ④ 精度/前沿；模型文件固定为三个 official base 自建 Q4_K_M（2026-11-19），量化比较在附录 A |
 | `全拼简拼整句重排-调研与设计.md` | **整句模式专题**（2026-11-22/23）：引擎机制、阶段一满覆盖重排、异步评分基建、子词复用、预提交效果研究（§十）、**组句候选生成 + LLM 句级重排（§十一，三模型对照与整句 CE 延迟）** |
 | `eval_samples.tsv` | wiki 同码采样样本 10 万行（名次分布 81%/11.5%/3.7%/1.8%/1.7%） |

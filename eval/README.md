@@ -30,7 +30,7 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   `prep_user_sc`、`build_user_corpus`、`user_corpus_eval`
 - **ce/**（1）`run_ce_cohort` = CE 跑批统一入口：anchors/samples/input
   三源 × 分片/线程池并行 × 断点续跑 × `--seed-from` 旧链播种
-- **calib/**（20）标定与首选率：`analyze_sc`（单字/词码对 5 合 1）、
+- **calib/**（23）标定与首选率：`analyze_sc`（单字/词码对 5 合 1）、
   `analyze_sel_by_code`、`grid_ctx_cand`（ctx×候选数网格，生产参数）、
   `compare_models`（多模型同窗对照）、`fusion_joint`（单格联合扫参）、
   **`fusion_sweep_all`（2026-11-18：逐 (模型,ctx,k) 全网格扫参，
@@ -76,10 +76,27 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   （user 域 8/10）→ 禁用 +0.07~0.08pp（user 域 +0.55pp）**，数据挖掘式
   名单不做（两半不重合）；树模型部署成本 150 树/15 叶 = 130KB / 34µs
   （`export` 子命令导出平坦 Lua 表，与 LightGBM 对拍 <1e-12））**、
-  **`export_prefix_gate`（2026-11-25：训练 + 双导出落地物——41 个可部署
-  特征 / 300 树 / τ 由 OOF 90% 量分位；同时写 Lua 平坦表与 C++ 头文件
+  **`export_prefix_gate`（2026-11-25：训练 + 双导出落地物——**53 特征 =
+  41 可部署 + 12 项 `ss_*` CE 分布** / 300 树 / τ 由 OOF 90% 量分位
+  （τ=0.973286、99.22%）；同时写 Lua 平坦表与 C++ 头文件
   （含 8,421 字字频表），落地到插件 `user/prefix_gate_model.lua` 与源码
-  `librime/src/rime/gear/prefix_gate_model.h`）**
+  `librime/src/rime/gear/prefix_gate_model.h`）**、
+  **`xgb_vs_lgb`（2026-11-25：LightGBM vs XGBoost 同预算对照——同 41 特征 /
+  同 OOF 分半 / 同 τ 规则；`--tune` 两库各扫 8 组超参、`--export` 导 XGB
+  平坦表。结论 = 两库最好点 99.10% 对 99.10%（错误集 92/110 重合、判门
+  76 µs 对 76 µs），**不换库**；XGB 移植需 float32 `<` 语义（double 比
+  33% 行走错分支）**）、
+  **`sentence_ambiguity`（2026-11-25：「最优组句 ≠ 实际句」能否当禁用信号
+  ——oracle 分组 / 运行期句尾稳定性 / 同 span 竞争 / 挖码名单复现性 /
+  叠在模型上的增量。结论 = 判据恒真（88% 触发）且依赖真值，运行期代理零
+  区分度，能落地部分已在模型特征里，挖码名单两半不重合且无增量；
+  产物 `eval/sentence_ambiguity.txt`）**、
+  **`ss_ce_dist`（2026-11-25：CE **分布**特征扩展——同 span（lead 那段码）
+  同音簇的 CE 熵/质量占比/极差/相对 margin/近似平局数（12 项）+ 整窗分布
+  （4 项）；同 cohort 重算缓存 `eval/prefix_model_rows_v2.jsonl`。结论 =
+  90% 量 99.09→**99.23%**（错 110→93，bootstrap CI 排除 0、随机列对照组
+  更差），win4 无增益（与 wm/n_window ρ≈1）；**ss12 已落地**（53 特征模型，
+  τ=0.973286 / 99.22%）；产物 `eval/ss_ce_dist.txt`）**
 - **pairfix/**（4）现行链：`pairfix_pipeline`（SOP 驱动）、
   `derive_pairfix_full`（唯一现行推导）、`audit_tool`（batch/merge/deploy
   三合一）、`audit_review_union`（M1–M8 机械审查）
@@ -89,9 +106,10 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   **`latency_grid`（ctx×k×设备的分位延迟，均值口径）**、
   `ab_upgrade`（llama.cpp 升级 A/B）、`gguf_types`（GGUF 张量体检）
 - **tools/**（19）`check_records_v2`、`run_tests`、`eval_rerank`、
-  **`lgb/`（2026-11-25：树模型导出的 Lua 侧基准/加载/对拍三脚本，
-  配套 `calib/prefix_confirm_model.py export`；150 树/15 叶实测 130 KB /
-  34 µs/次、对拍 5e-13）**、
+  **`lgb/`（2026-11-25：树模型导出的 Lua 侧基准/加载/对拍四脚本
+  （`bench_tree.lua` 通用 `<`/`<=` 两语义、支持 XGB `base` 偏置），
+  配套 `calib/prefix_confirm_model.py export` 与 `calib/xgb_vs_lgb.py`；
+  150 树/15 叶实测 130 KB / 34 µs/次、对拍 5e-13；300×15 两库均 76 µs）**、
   **`pareto_front`（2026-11-18：(中位延迟, 选重率) 帕累托前沿，可 `--metric
   err|honest|prod`、可选 ctx 池化）**、**`plot_latency`（②③ 的 2×2 拼图，部署档 Q4_K_M）**、
   **`fit_prefill`（T_prefill 线性拟合 + ctx* 选择：<150ms 且 ≤20；`--extra` 可拟合量化变体）**、
