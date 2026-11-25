@@ -30,7 +30,7 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   `prep_user_sc`、`build_user_corpus`、`user_corpus_eval`
 - **ce/**（1）`run_ce_cohort` = CE 跑批统一入口：anchors/samples/input
   三源 × 分片/线程池并行 × 断点续跑 × `--seed-from` 旧链播种
-- **calib/**（26）标定与首选率：`analyze_sc`（单字/词码对 5 合 1）、
+- **calib/**（28）标定与首选率：`analyze_sc`（单字/词码对 5 合 1）、
   `analyze_sel_by_code`、`grid_ctx_cand`（ctx×候选数网格，生产参数）、
   `compare_models`（多模型同窗对照）、`fusion_joint`（单格联合扫参）、
   **`fusion_sweep_all`（2026-11-18：逐 (模型,ctx,k) 全网格扫参，
@@ -91,6 +91,15 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   叠在模型上的增量。结论 = 判据恒真（88% 触发）且依赖真值，运行期代理零
   区分度，能落地部分已在模型特征里，挖码名单两半不重合且无增量；
   产物 `eval/sentence_ambiguity.txt`）**、
+  **`user_freq_feat`（2026-11-25：用户词频进树模型——wiki 预打 30k/79k 词
+  冻结账本，eff/uni 各 2 项 + 差值加进 53 特征。结论 = 90% 量下零增益
+  （99.22% 不变）、同量 +0.10~0.15pp；方向对（正确窗 uni 中位 8 vs 错误 2）
+  但属语料词频、与 char_freq 同源，不加）**、
+  **`short_ctx`（2026-11-25：短上文精度——句首窗截断 before 为 0–7 字，
+  重跑组句+CE 后按生产口径判门；**12,000 句 / 96,000 变体**扩样版：
+  0 字 **90.89%**（856 次 78 错）→ 取消；1 字 98.17%（p=0.0007）、
+  2–3 字 99.20%（p=0.0014）都显著低于 4–7 字的 **99.81%** → 建议下限抬到
+  ≥4 字；1 字与 2–3 字无显著差异（p=0.16），真正分界是 ≤3 vs ≥4）**、
   **`reading_share`（2026-11-25：多音字读音占比——万象 jichu+shici 建字→
   读音权重表（缓存 `eval/char_readings.tsv`），候选 code span × 文本 DP 对齐
   取 P(读音|字)；按最小 share 分桶 + 5 个特征进模型。结论 = 近 1:1 档最差
