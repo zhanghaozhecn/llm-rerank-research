@@ -570,7 +570,8 @@ def evaluate(folds=2, mode=None):
                                  for k, v in sorted(comp.items())))
     print("=" * 108)
 
-    pop = [r for r in rows if r["f"]["ctx_len"] >= 4]
+    pop = [r for r in rows if r["f"]["ctx_len"] >= 4
+           and r["f"]["p"] >= 0.5]
     old = [r for r in pop if r["old_rule"]]
     add = [r for r in pop if not r["old_rule"]]
     print(f"\n① 结构触发域（P≥0.5 ∧ ctx≥4）：{len(pop)} 窗"
@@ -623,8 +624,9 @@ def evaluate(folds=2, mode=None):
     # ③ 各臂 OOF（folds=2 旧协议；folds=5 稳健性）
     print(f"\n③ 等量对比（OOF folds={folds}；目标量 = k × N0 = {n0}）")
     idx_old = [i for i, r in enumerate(rows) if r["old_rule"]
-               and r["f"]["ctx_len"] >= 4]
-    idx_new = [i for i, r in enumerate(rows) if r["f"]["ctx_len"] >= 4]
+               and r["f"]["ctx_len"] >= 4 and r["f"]["p"] >= 0.5]
+    idx_new = [i for i, r in enumerate(rows) if r["f"]["ctx_len"] >= 4
+               and r["f"]["p"] >= 0.5]
     idx_all = list(range(len(rows)))
     sc0 = np.full(len(rows), np.nan)
     sc2 = np.full(len(rows), np.nan)
@@ -744,7 +746,8 @@ def cross_scores(folds=5):
     tr_all = [r for r in top if r["old_rule"] and r["f"]["ctx_len"] >= 4]
     uniq = sorted({r["sid"] for r in bud} | {r["sid"] for r in tr_all})
     gid = {k: kk % folds for kk, k in enumerate(uniq)}
-    te_idx = [i for i, r in enumerate(bud) if r["f"]["ctx_len"] >= 4]
+    te_idx = [i for i, r in enumerate(bud) if r["f"]["ctx_len"] >= 4
+              and r["f"]["p"] >= 0.5]
     sc = np.full(len(bud), np.nan)
     Xte_all = feat_matrix(bud, BASE)
     for g in range(folds):
@@ -795,6 +798,8 @@ def current_report(folds=5):
     sel_row_ok = [r["ok"] for r in bud]
     sid_of = [r["sid"] for r in bud]
     _, tau, _ = load_lua_model(LUA_MODEL)
+    # 生产模型门只在 p≥0.5 才判（训练域下界）——从判定区分母里剔除 p<0.5
+    te_idx = [i for i in te_idx if bud[i]["f"]["p"] >= 0.5]
     N = len(te_idx)
     sel = [i for i in te_idx if sc[i] >= tau]
     ok = sum(1 for i in sel if bud[i]["ok"])
@@ -856,7 +861,7 @@ def ablate(folds=5):
     """53 特征按语义组 leave-one-group-out（5 折 OOF，90% N0 等量）。"""
     global sel_row_ok
     rows = [r for r in _load_rows(L.EVAL / "prefix_class_rows_budget.jsonl")
-            if r["f"]["ctx_len"] >= 4]
+            if r["f"]["ctx_len"] >= 4 and r["f"]["p"] >= 0.5]
     sel_row_ok = [r["ok"] for r in rows]
     idx = list(range(len(rows)))
     n0 = sum(1 for r in rows if r["old_rule"] and r["fire"])
