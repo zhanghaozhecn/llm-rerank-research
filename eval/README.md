@@ -30,7 +30,7 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   `prep_user_sc`、`build_user_corpus`、`user_corpus_eval`
 - **ce/**（1）`run_ce_cohort` = CE 跑批统一入口：anchors/samples/input
   三源 × 分片/线程池并行 × 断点续跑 × `--seed-from` 旧链播种
-- **calib/**（23）标定与首选率：`analyze_sc`（单字/词码对 5 合 1）、
+- **calib/**（26）标定与首选率：`analyze_sc`（单字/词码对 5 合 1）、
   `analyze_sel_by_code`、`grid_ctx_cand`（ctx×候选数网格，生产参数）、
   `compare_models`（多模型同窗对照）、`fusion_joint`（单格联合扫参）、
   **`fusion_sweep_all`（2026-11-18：逐 (模型,ctx,k) 全网格扫参，
@@ -91,6 +91,21 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   叠在模型上的增量。结论 = 判据恒真（88% 触发）且依赖真值，运行期代理零
   区分度，能落地部分已在模型特征里，挖码名单两半不重合且无增量；
   产物 `eval/sentence_ambiguity.txt`）**、
+  **`reading_share`（2026-11-25：多音字读音占比——万象 jichu+shici 建字→
+  读音权重表（缓存 `eval/char_readings.tsv`），候选 code span × 文本 DP 对齐
+  取 P(读音|字)；按最小 share 分桶 + 5 个特征进模型。结论 = 近 1:1 档最差
+  （92.86%，与用户提醒一致）但只占 0.3%，加特征无增量；
+  `ss_cf_gap`（字频差）同样无增益，已回退）**、
+  **`confirm_by_position`（2026-11-25：现行 53 特征门按「句内第 x 个词」的
+  确认率/正确率——OOF 分数 ≥ τ ∧ p≥0.5 ∧ 非 ta；x 由 sentences.jsonl 的
+  HanLP segs 定。wiki 14,165 窗 → 10,858 确认（76.7%）/ 99.18%，确认率
+  随词位上升 71%→89%、正确率 99.1–99.6%；user 1,581 窗 → 86.6% / 98.32%；
+  产物 `eval/confirm_by_position_{wiki,user}.txt`）**、
+  **`confirm_real_corpus`（2026-11-25：真机语料的自动确认实测——debug
+  `pfx: exec select` 按最近 W 锚定到 corpus，按「第 n 个词」出确认率/准确率；
+  luna_pinyin 53 次确认 **98.1%**、确认/词 15.3%，首词 30/30、第 2 词
+  15/16；语料是 11-23/11-24 旧门，不能评价现行 53 特征门；
+  产物 `eval/confirm_real_corpus.txt`）**、
   **`ss_ce_dist`（2026-11-25：CE **分布**特征扩展——同 span（lead 那段码）
   同音簇的 CE 熵/质量占比/极差/相对 margin/近似平局数（12 项）+ 整窗分布
   （4 项）；同 cohort 重算缓存 `eval/prefix_model_rows_v2.jsonl`。结论 =
