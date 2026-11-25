@@ -126,7 +126,16 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   （4 项）；同 cohort 重算缓存 `eval/prefix_model_rows_v2.jsonl`。结论 =
   90% 量 99.09→**99.23%**（错 110→93，bootstrap CI 排除 0、随机列对照组
   更差），win4 无增益（与 wm/n_window ρ≈1）；**ss12 已落地**（53 特征模型，
-  τ=0.973286 / 99.22%）；产物 `eval/ss_ce_dist.txt`）**
+  τ=0.973286 / 99.22%）；产物 `eval/ss_ce_dist.txt`）**、
+  **`prefix_class_gate`（2026-11-26：同档比较（class-first）大样本验证——
+  重建全部 class-first 行（旧脚本只收融合序第 1），特征按生产口径以 lead
+  为锚；两窗口口径 top6 / CE 预算 12，句子 5 折 OOF。结构精度：新增触发
+  budget 78.33%（top6 72.90%）、旧规则 96.17%；经树模型门后新增 98.5–99.4%，
+  同精度下总确认量 +14%（budget）/+33%（top6）→ **保留同档比较**。
+  +16 项档位/跨档 CE 差特征无增益（V3−V2 跨口径符号不一致、CI 跨 0）→
+  **维持 53 特征、不重训**。`cross` 子命令 = top6 训练→预算窗测试
+  （≈源码部署：90% 量 99.72%、新增 99.28%）；产物
+  `eval/prefix_class_gate*.txt` / `eval/prefix_class_cross.txt`）**
 - **pairfix/**（4）现行链：`pairfix_pipeline`（SOP 驱动）、
   `derive_pairfix_full`（唯一现行推导）、`audit_tool`（batch/merge/deploy
   三合一）、`audit_review_union`（M1–M8 机械审查）
