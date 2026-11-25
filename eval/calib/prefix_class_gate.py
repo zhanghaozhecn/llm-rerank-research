@@ -25,8 +25,11 @@
     可能共享，仅作参考）。
 
 跑法（研究库根目录）：
-  python eval/calib/prefix_class_gate.py build
-  python eval/calib/prefix_class_gate.py eval
+  python eval/calib/prefix_class_gate.py build [--window top6|budget]
+  python eval/calib/prefix_class_gate.py eval --folds 5 --window budget
+  python eval/calib/prefix_class_gate.py cross   # 跨口径 90/95/100% 量表
+  python eval/calib/prefix_class_gate.py current # 固定发布 τ：整体/分档召回精度
+  python eval/calib/prefix_class_gate.py ablate  # 53 特征分组消融
 """
 import argparse
 import json
@@ -729,21 +732,19 @@ def evaluate(folds=2, mode=None):
               f"[{100*lo:+.2f},{100*hi:+.2f}]（{len(a3)} / {len(a2)}）")
 
 
-def cross_eval(folds=5):
-    """跨窗口口径：top6 旧规则行训练 → 预算窗事件集打分（≈现行源码版部署：
-    模型在旧 6 窗分布上学，线上吃 CE 预算准入后的更大窗口）。"""
-    global sel_row_ok, sid_of
-    top = [json.loads(l) for l in open(
-        L.EVAL / "prefix_class_rows.jsonl", encoding="utf-8")]
-    bud = [json.loads(l) for l in open(
-        L.EVAL / "prefix_class_rows_budget.jsonl", encoding="utf-8")]
-    sel_row_ok = [r["ok"] for r in bud]
-    sid_of = [r["sid"] for r in bud]
+def _load_rows(path):
+    return [json.loads(l) for l in open(path, encoding="utf-8")]
+
+
+def cross_scores(folds=5):
+    """top6 旧规则行 → 预算窗（含新增行）的折外分数。
+    ≈现行源码版部署：模型在旧 6 窗分布上学，线上吃预算准入后的更大窗口。"""
+    top = _load_rows(L.EVAL / "prefix_class_rows.jsonl")
+    bud = _load_rows(L.EVAL / "prefix_class_rows_budget.jsonl")
     tr_all = [r for r in top if r["old_rule"] and r["f"]["ctx_len"] >= 4]
     uniq = sorted({r["sid"] for r in bud} | {r["sid"] for r in tr_all})
     gid = {k: kk % folds for kk, k in enumerate(uniq)}
     te_idx = [i for i, r in enumerate(bud) if r["f"]["ctx_len"] >= 4]
-    n0 = sum(1 for i in te_idx if bud[i]["old_rule"] and bud[i]["fire"])
     sc = np.full(len(bud), np.nan)
     Xte_all = feat_matrix(bud, BASE)
     for g in range(folds):
@@ -752,7 +753,17 @@ def cross_eval(folds=5):
                         np.array([1 if r["ok"] else 0 for r in itr]))
         ite = [i for i in te_idx if gid[bud[i]["sid"]] == g]
         sc[ite] = clf.predict_proba(Xte_all[ite])[:, 1]
-    print(f"\n跨口径：top6 旧规则训练（{len(tr_all)} 行）→ 预算窗测试"
+    return bud, sc, te_idx, len(tr_all)
+
+
+def cross_eval(folds=5):
+    """跨口径等量表（top6 旧规则训练 → 预算窗，90/95/100% N0）。"""
+    global sel_row_ok, sid_of
+    bud, sc, te_idx, ntr = cross_scores(folds)
+    sel_row_ok = [r["ok"] for r in bud]
+    sid_of = [r["sid"] for r in bud]
+    n0 = sum(1 for i in te_idx if bud[i]["old_rule"] and bud[i]["fire"])
+    print(f"\n跨口径：top6 旧规则训练（{ntr} 行）→ 预算窗测试"
           f"（{len(te_idx)} 行，N0={n0}）")
     head()
     for k in (0.90, 0.95, 1.00):
@@ -768,29 +779,119 @@ def cross_eval(folds=5):
     ai = [i for i in te_idx if not bud[i]["old_rule"]]
     ya = [1 if bud[i]["ok"] else 0 for i in ai]
     print(f"  新增行 AUC = {roc_auc_score(ya, sc[ai]):.4f}（n={len(ai)}）")
-    # 同精度：对照「预算窗重训 V0」的 90% 量精度
-    idx_old = [i for i in te_idx if bud[i]["old_rule"]]
-    sc0 = np.full(len(bud), np.nan)
-    sc0[idx_old] = oof_scores([bud[i] for i in idx_old], BASE,
-                              folds=folds)[0]
-    base = prec(pick(sc0, idx_old, int(round(0.9 * n0))))
-    o = sorted(te_idx, key=lambda i: -sc[i])
-    okc, best = 0, 0
-    for j, i in enumerate(o, 1):
-        okc += 1 if bud[i]["ok"] else 0
-        if okc / j >= base:
-            best = j
-    s = o[:best]
-    addn = [i for i in s if not bud[i]["old_rule"]]
-    print(f"\n  同精度（≥预算窗 V0 基线 {100*base:.2f}%）最大触发量 = {best}"
-          f"（{100*best/max(n0,1):.0f}% N0，新增 {len(addn)}）")
-    tab([bud[i] for i in s], "跨口径·同精度最大量")
+
+
+def llm_single(r):
+    """LLM（窗口融合序第 1）候选是否单字。"""
+    ls = r["f"]["lead_single"] > 0
+    gf = r["c"]["lead_is_global_first"] > 0
+    return ls if gf else (not ls)
+
+
+def current_report(folds=5):
+    """现行门的整体/分档召回与精度（固定发布 τ；诚实 OOF 跨口径）。"""
+    global sel_row_ok, sid_of
+    bud, sc, te_idx, ntr = cross_scores(folds)
+    sel_row_ok = [r["ok"] for r in bud]
+    sid_of = [r["sid"] for r in bud]
+    _, tau, _ = load_lua_model(LUA_MODEL)
+    N = len(te_idx)
+    sel = [i for i in te_idx if sc[i] >= tau]
+    ok = sum(1 for i in sel if bud[i]["ok"])
+    print(f"\n现行门（τ={tau:.6f}；跨口径 OOF：top6 旧规则 {ntr} 行 → "
+          f"预算窗 {N} 行）")
+    print(f"整体：可判 {N}，确认 {len(sel)}，精度 {100*ok/max(len(sel),1):.2f}%，"
+          f"召回 {100*len(sel)/max(N,1):.2f}%，K5={ok-5*(len(sel)-ok)}")
+    lo, hi = wilson(len(sel) - ok, len(sel))
+    print(f"  精度 Wilson 95% CI [{100*(1-hi):.2f},{100*(1-lo):.2f}]")
+    for nm, cond in (
+            ("旧规则（lead=融合序第 1）", lambda r: r["old_rule"]),
+            ("新增（lead=同档首选但非第 1）", lambda r: not r["old_rule"])):
+        sub = [i for i in te_idx if cond(bud[i])]
+        cf = [i for i in sub if sc[i] >= tau]
+        okk = sum(1 for i in cf if bud[i]["ok"])
+        print(f"  {nm:<30}可判 {len(sub):>6}  确认 {len(cf):>6}  "
+              f"精度 {100*okk/max(len(cf),1):6.2f}%  召回 "
+              f"{100*len(cf)/max(len(sub),1):5.2f}%")
+    print("\n四种首词组合（ngram lead 字数 × LLM 融合序第 1 字数）")
+    print(f"{'组合':<22}{'可判':>7}{'确认':>7}{'精度':>9}"
+          f"{'召回':>8}{'占确认':>8}{'旧/新增':>10}")
+    for ls, lnm in ((True, "1 字"), (False, "多字")):
+        for lls, llnm in ((True, "1 字"), (False, "多字")):
+            sub = [i for i in te_idx
+                   if (bud[i]["f"]["lead_single"] > 0) == ls
+                   and llm_single(bud[i]) == lls]
+            cf = [i for i in sub if sc[i] >= tau]
+            okk = sum(1 for i in cf if bud[i]["ok"])
+            oldn = sum(1 for i in cf if bud[i]["old_rule"])
+            print(f"ngram {lnm} / LLM {llnm:<6}{len(sub):>7}{len(cf):>7}"
+                  f"{100*okk/max(len(cf),1):>8.2f}%"
+                  f"{100*len(cf)/max(len(sub),1):>7.2f}%"
+                  f"{100*len(cf)/max(len(sel),1):>7.1f}%"
+                  f"{oldn:>6}/{len(cf)-oldn:<5}")
+            if cf and okk < len(cf):
+                lo, hi = wilson(len(cf) - okk, len(cf))
+                print(f"    精度 CI [{100*(1-hi):.2f},{100*(1-lo):.2f}]，"
+                      f"错 {len(cf)-okk}")
+    return bud, sc, te_idx, tau
+
+
+# ── 53 特征分组消融（2026-11-26 用户提问）──────────────────────────
+GROUPS = {
+    "ngram/lead 先验": ["p", "logit_p", "d", "top_score", "n_leads",
+                     "cnt_lead", "n_gen", "sent_len"],
+    "lead 形状": ["lead_len", "srem", "lead_end", "lead_chars_cov"],
+    "窗口/margin": ["wm", "n_window", "n_pool", "code_len", "ctx_len"],
+    "lead CE 结构": ["ce1", "ce2", "ce3", "ce_w", "ntok", "chars_per_tok",
+                   "ce_per_tok", "ce_per_char", "multi_tok", "ce1_per_char"],
+    "r2 竞争": ["ce1_r2", "ce_w_r2", "ntok_r2", "ce_per_tok_r2", "ntok_gap",
+              "r2_chars", "r2_single", "ce1_gap"],
+    "歧义计数": ["n_single", "n_same_span", "lead_single", "single_ratio"],
+    "字频": ["char_freq", "char_freq_mean"],
+    "ss12 CE 分布": list(M.DIST_SS),
+}
+
+
+def ablate(folds=5):
+    """53 特征按语义组 leave-one-group-out（5 折 OOF，90% N0 等量）。"""
+    global sel_row_ok
+    rows = [r for r in _load_rows(L.EVAL / "prefix_class_rows_budget.jsonl")
+            if r["f"]["ctx_len"] >= 4]
+    sel_row_ok = [r["ok"] for r in rows]
+    idx = list(range(len(rows)))
+    n0 = sum(1 for r in rows if r["old_rule"] and r["fire"])
+    k = int(round(0.9 * n0))
+    from sklearn.metrics import roc_auc_score
+    y = np.array([1 if r["ok"] else 0 for r in rows])
+
+    def run(cols):
+        sc, _ = oof_scores(rows, cols, folds)
+        return prec(pick(sc, idx, k)), float(roc_auc_score(y, sc))
+
+    print(f"\n53 特征消融（budget 窗，{len(rows)} 行，5 折 OOF，"
+          f"90% N0={k}）")
+    bp, ba = run(BASE)
+    print(f"{'变体':<24}{'精度':>9}{'Δpp':>8}{'AUC':>8}{'ΔAUC':>9}{'特征数':>7}")
+    print(f"{'全 53 特征':<24}{100*bp:>8.2f}%{'—':>8}{ba:>8.4f}{'—':>9}"
+          f"{len(BASE):>7}")
+    for nm, cols in GROUPS.items():
+        sub = [c for c in BASE if c not in cols]
+        p, a = run(sub)
+        print(f"{'−' + nm:<24}{100*p:>8.2f}%{100*(p-bp):>+8.2f}"
+              f"{a:>8.4f}{a-ba:>+9.4f}{len(sub):>7}")
+    for nm, cols in (("最小 4 特征 p/d/ce1/wm", ["p", "d", "ce1", "wm"]),
+                     ("仅 ss12 + p/d/ce1", ["p", "d", "ce1"] + list(M.DIST_SS))):
+        p, a = run(cols)
+        print(f"{nm:<24}{100*p:>8.2f}%{100*(p-bp):>+8.2f}"
+              f"{a:>8.4f}{a-ba:>+9.4f}{len(cols):>7}")
+    print("  注：Δ = 去掉该组后 − 全特征；负值 = 该组有贡献。")
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", nargs="?", default="eval",
-                    choices=["build", "eval", "all", "cross"])
+                    choices=["build", "eval", "all", "cross", "current",
+                             "ablate"])
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--folds", type=int, default=2)
     ap.add_argument("--window", default="top6", choices=["top6", "budget"])
@@ -801,3 +902,7 @@ if __name__ == "__main__":
         evaluate(a.folds, a.window)
     if a.cmd == "cross":
         cross_eval(a.folds)
+    if a.cmd == "current":
+        current_report(a.folds)
+    if a.cmd == "ablate":
+        ablate(a.folds)

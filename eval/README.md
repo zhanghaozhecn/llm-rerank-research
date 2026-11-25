@@ -135,7 +135,15 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   +16 项档位/跨档 CE 差特征无增益（V3−V2 跨口径符号不一致、CI 跨 0）→
   **维持 53 特征、不重训**。`cross` 子命令 = top6 训练→预算窗测试
   （≈源码部署：90% 量 99.72%、新增 99.28%）；产物
-  `eval/prefix_class_gate*.txt` / `eval/prefix_class_cross.txt`）**
+  `eval/prefix_class_gate*.txt` / `eval/prefix_class_cross.txt`）。
+  **`current`（2026-11-26：固定发布 τ=0.973286 的召回/精度）**：整体
+  可判 22,410 → 确认 15,927（**99.42% / 召回 71.07%**）；旧规则 99.62% /
+  76.66%，新增 98.55% / 54.29%。四格（ngram lead × LLM 首词字数）：
+  1/1 99.77% 召回 70.65%、1/多 100% 36.91%、多/1 98.51% 55.05%、
+  多/多 99.42% 86.35%。**`ablate`（53 特征分组 LOO）**：只有
+  ngram/lead 先验（−0.11pp / AUC −0.0092）与 ss12（−0.08pp / −0.0054）
+  有实质贡献，其余组 Δ≤±0.02pp；最小 4 特征 p/d/ce1/wm 差 0.68pp。产物
+  `eval/prefix_class_current.txt` / `eval/prefix_class_ablate.txt`）**
 - **pairfix/**（4）现行链：`pairfix_pipeline`（SOP 驱动）、
   `derive_pairfix_full`（唯一现行推导）、`audit_tool`（batch/merge/deploy
   三合一）、`audit_review_union`（M1–M8 机械审查）
