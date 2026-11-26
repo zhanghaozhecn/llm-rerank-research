@@ -108,7 +108,7 @@ def dump_trees(clf):
 
 def write_lua(path, trees, tau, freq):
     L = ["-- 前缀确认门（LightGBM 300×15，53 特征 = 41+ss12）自动生成，勿手改",
-         "-- 生成：eval/calib/export_prefix_gate.py（研究库；2026-11-26 同档新规则重训）",
+         "-- 生成：eval/calib/export_prefix_gate.py（研究库；2026-11-26 64 池窗重训，span 域）",
          "-- feats = 特征向量顺序；f 下标 1-based（0=叶）；score∈[0,1]",
          "return {",
          " n=%d," % len(trees),
@@ -134,7 +134,7 @@ def write_lua(path, trees, tau, freq):
 
 def write_h(path, trees, tau, freq):
     L = ["// 前缀确认门（LightGBM 300×15，53 特征 = 41+ss12）自动生成，勿手改",
-         "// 生成：eval/calib/export_prefix_gate.py（研究库；2026-11-26 同档新规则重训）",
+         "// 生成：eval/calib/export_prefix_gate.py（研究库；2026-11-26 64 池窗重训，span 域）",
          "// 用法：按 kFeats 顺序装 53 维特征 → 每棵树从根 1 走到 f==0 的叶，",
          "//       sum v[node] → p=1/(1+exp(-sum))；p >= kTau 才确认。",
          "#pragma once",

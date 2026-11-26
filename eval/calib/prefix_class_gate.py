@@ -104,7 +104,13 @@ def window_ced(ctx, pool, ce):
     return d
 
 
-def build_window(w, pool, gen, ced, syls, cfreq, tag, mode="top6"):
+def build_window(w, pool, gen, ced, syls, cfreq, tag, mode="top6",
+                 rule="class", syll=None):
+    """rule = 结构触发域（模型只判结构层放行的 lead）：
+      class = 同字数档首选（2026-11-26 部署模型的训练域）
+      span  = 同 span [0, le) 首选 ∧ 单字 lead 跳过音节不完整字（tier 1）
+              （2026-11-26 晚定案③ + tier skip = 现行生产结构域；syll =
+              syll_chars.tsv 的 {码: 字集合}，span 域必传）"""
     n = len(w["code"])
     texts = [c[0] for c in pool]
     starts = [c[1] for c in pool]
@@ -146,13 +152,38 @@ def build_window(w, pool, gen, ced, syls, cfreq, tag, mode="top6"):
     if lead_i is None:
         return None, "lead_not_in_window"
     lead_single = len(lead) == 1
-    cf = None
-    for i in order:
-        if (len(texts[i]) == 1) == lead_single:
+    if rule == "span":
+        # 生产 pick 语义：同 span 融合序首个；单字 lead 时音节不完整字（tier 1
+        # = 字不在整读表该码串里）不参与占位（2026-11-26 定案③ + tier skip）
+        exact = syll.get(w["code"][:le], set()) if syll else None
+        cf = None
+        tier_above = 0
+        for i in order:
+            if starts[i] != 0 or ends[i] != le:
+                continue
+            if lead_single and exact is not None and texts[i] not in exact:
+                tier_above += 1
+                continue
             cf = i
             break
-    if cf != lead_i:
-        return None, "not_class_first"
+        if cf != lead_i:
+            return None, "not_span_first"
+    else:
+        tier_above = -1
+        cf = None
+        for i in order:
+            if (len(texts[i]) == 1) == lead_single:
+                cf = i
+                break
+        if cf != lead_i:
+            return None, "not_class_first"
+    # 参考标记：同字数档口径下 lead 是否也是首选（与旧训练域的重叠度）
+    cf_cls = None
+    for i in order:
+        if (len(texts[i]) == 1) == lead_single:
+            cf_cls = i
+            break
+    cls_first = (cf_cls == lead_i)
     r2i = next((i for i in order if i != lead_i), None)
 
     i1 = lead_i
@@ -229,6 +260,7 @@ def build_window(w, pool, gen, ced, syls, cfreq, tag, mode="top6"):
     return dict(
         wid=w["wid"], sid=w["sid"], tag=tag, domain=w["domain"],
         ok=ok, fire=p >= M.PGATE, old_rule=(order[0] == lead_i),
+        rule=rule, cls_first=cls_first, tier_above=tier_above,
         lead=lead, lead_syl=w["code"][:le] if le > 0 else "",
         text=w["text"], m=w["m"], same_py=same_py,
         truth_prefix=w["text"][:lead_len],

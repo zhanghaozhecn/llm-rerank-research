@@ -243,7 +243,9 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   `tier_probe2.py`（16 池 CE 口径）、`tier_gate_pool64.py`（64 池劫持率 +
   gate 取法结构口径）、`gate_span_eval.py`（「同字数档 vs 同 span 取首选」带
   现役树模型门的离线评估）、`budget_and_gate_single.py`（预算窗行数/CE 行 +
-  单字 lead 的 1 字档占位）、`pool64_recal.py`（预算扫描 + 公式族重跑）**
+  单字 lead 的 1 字档占位）、`pool64_recal.py`（预算扫描 + 公式族重跑）、`gate_pick_probe.py`（gate 取法解锁窗）**
+- **2026-11-27**：`big64_plan.py`（prefix_big 训练行廉价过滤 + CE 缺口估算）、`big64_ce.py`（prefix_big 64 池按需回填：probe64/bench/ce/assemble，只算能成为 gate 训练行的 31,001 窗，CE 写共享 `ce64/results.jsonl`）
+- **门 64 池重训主线**（calib，非 scratch）：`prefix_gate_pool64.py`（build = cohort64→span 域训练行；train = 诚实 OOF + 三臂对比 + 导出`lgb/prefix_gate_model_pool64.{lua,h}`，2026-11-27 采用 τ=0.984372）
 
 ## 约定
 
