@@ -44,7 +44,7 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   窗口网格→无头引擎探针→CE/组句/全句 CE 批补，子命令
   sentences/windows/ce_input/gen/genfull/assemble）、`luna_mixed_lib`
   （探针、插件 DLL 批跑、按需补算的公共件 + `luna_mixed_gen.lua` 驱动）、
-  `luna_mixed_eval`（混合窗上的排序公式族评测）、`prefix_confirm_2x2`
+  `luna_mixed_eval`（混合窗上的排序公式族评测）、**`luna_mixed_budget`（2026-11-26：CE 预算 12 窗 vs 旧 6/16 窗——覆盖/窗宽/融合 wrong·nonideal 与公式族复核；预算窗 wrong 36.41%、覆盖 77.88%，旧 6 窗 45.41%/62.76%；产物 `eval/luna_mixed_budget.txt`）**、`prefix_confirm_2x2`
   （前缀确认「窗口路径 × 句级路径」2×2：逐窗静态 + 整句打字动态仿真）、
   `guard_syllables`（2026-11-24：前缀确认守卫标定——码数 vs 音节数，
   按「lead 音节 × 剩余音节」出精度/K 敏感表；结论 = 剩余 ≥2 音节、单字 lead 无例外
@@ -61,8 +61,10 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   **`token_bucket_sweep`（2026-11-25：按候选总 token 数分桶的 CE 系数标定
   ——1-token 固定 1，其余 5 个系数 (a21,a22,a31,a32,a33) 随机采样+坐标下降
   联合搜索；句子分半诚实；产物 `eval/token_bucket_sweep.txt/.tsv`。
-  结果 = wrong −0.15pp / nonideal −1.54pp，收益主要在 2-token 窗、参数跨半
-  不稳，未改生产常数）**、
+  6 窗结果 = wrong −0.15pp / nonideal −1.54pp，未改生产常数。**
+  **`--window budget`（2026-11-26）**：预算窗下 36.42/54.61 → 36.16/51.22
+  （−0.26 / −3.39pp），参数 a21=0.75/a22=1.00/a31=1.00/a32=0.70/a33=0.35；
+  收益仍以 nonideal 为主，**生产常数未改**；产物 `*_budget.tsv`）**、
   **`build_prefix_big`（2026-11-25：前缀确认大 cohort——wiki 12,001 句（8×）
   与 luna_mixed 完全同口径；**只对判定区窗算 CE**（P≥0.5 ∧ lead 在引擎池同
   span ∧ 剩余 ≥2 音节，约 21% 窗），CE 落 luna_mixed 共用缓存；子命令
@@ -115,7 +117,9 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   确认率/正确率——OOF 分数 ≥ τ ∧ p≥0.5 ∧ 非 ta；x 由 sentences.jsonl 的
   HanLP segs 定。wiki 14,165 窗 → 10,858 确认（76.7%）/ 99.18%，确认率
   随词位上升 71%→89%、正确率 99.1–99.6%；user 1,581 窗 → 86.6% / 98.32%；
-  产物 `eval/confirm_by_position_{wiki,user}.txt`）**、
+  产物 `eval/confirm_by_position_{wiki,user}.txt`。**`--cohort class`**
+  （2026-11-26 新树+预算窗）：wiki 20,232→15,251（75.4%）/99.50%、
+  user 2,087→1,875（89.8%）/98.67%）**、
   **`confirm_real_corpus`（2026-11-25：真机语料的自动确认实测——debug
   `pfx: exec select` 按最近 W 锚定到 corpus，按「第 n 个词」出确认率/准确率；
   luna_pinyin 53 次确认 **98.1%**、确认/词 15.3%，首词 30/30、第 2 词

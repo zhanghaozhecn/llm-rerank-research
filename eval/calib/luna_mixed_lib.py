@@ -343,3 +343,32 @@ def run_ce(lines, workers=1):
                                 "ntok": r.get("ntok", {})},
                                ensure_ascii=False) + "\n")
     return len(todo)
+
+
+# ── CE 预算准入（2026-11-26 生产口径）────────────────────────────────
+CE_BUDGET = 12
+
+
+def budget_mask(nt, gshow, pad=None, budget=CE_BUDGET):
+    """引擎序扫描的预算准入 → [n,W] bool 窗掩码（与 llm_filter 同构）：
+
+    1-token 免费全收；多 token 花 min(ntok,3)−1，够就收并扣预算，
+    不够就跳过继续扫（后面的便宜候选仍可进）。nt=0（研究侧无 CE）按
+    2-token 计（cost 1），评分侧会被 has_ce 掩掉。
+    """
+    import numpy as np
+    nt = np.asarray(nt)
+    gshow = np.asarray(gshow)
+    n, W = nt.shape
+    pad = np.zeros_like(gshow) if pad is None else np.asarray(pad)
+    win = np.zeros((n, W), dtype=bool)
+    rem = np.full(n, int(budget), dtype=int)
+    for j in range(W):
+        ok = (~gshow[:, j]) & (~pad[:, j])
+        cost = np.where(nt[:, j] <= 1, 0, np.minimum(nt[:, j], 3) - 1)
+        cost = np.where(nt[:, j] == 0, 1, cost)
+        take1 = ok & (nt[:, j] == 1)
+        take_m = ok & ((nt[:, j] >= 2) | (nt[:, j] == 0)) & (cost <= rem)
+        win[:, j] = take1 | take_m
+        rem = rem - np.where(take_m, cost, 0)
+    return win

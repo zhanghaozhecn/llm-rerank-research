@@ -67,24 +67,39 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--domain", default="wiki",
                     choices=["wiki", "user", "all"])
+    ap.add_argument("--cohort", default="v2", choices=["v2", "class"],
+                    help="class = 2026-11-26 预算窗新规则 cohort + 新树")
+    ap.add_argument("--folds", type=int, default=5)
     a = ap.parse_args()
-    rows = S.load_v2()
-    if a.domain != "all":
-        rows = [r for r in rows if r["domain"] == a.domain]
-    sents = load_sents()
-    X = S.mat(rows, DEP)
-    y = np.array([1 if r["ok"] else 0 for r in rows])
-    import lightgbm as lgb
-    P = dict(n_estimators=300, learning_rate=0.05, num_leaves=15,
-             min_child_samples=60, subsample=0.9, subsample_freq=1,
-             colsample_bytree=0.8, reg_lambda=1.0, random_state=7,
-             verbose=-1)
-    half = np.array([M.half_of(r) for r in rows])
-    oof = np.zeros(len(rows))
-    for A, B in ((0, 1), (1, 0)):
-        itr, ite = half == A, half == B
-        oof[ite] = lgb.LGBMClassifier(**P).fit(
-            X[itr], y[itr]).predict_proba(X[ite])[:, 1]
+    if a.cohort == "class":
+        import prefix_class_gate as G
+        rows = [r for r in G._load_rows(
+            G.L.EVAL / "prefix_class_rows_budget.jsonl")
+            if r["f"]["ctx_len"] >= 4 and r["f"]["p"] >= 0.5]
+        if a.domain != "all":
+            rows = [r for r in rows if r["domain"] == a.domain]
+        sents = load_sents()
+        y = np.array([1 if r["ok"] else 0 for r in rows])
+        oof = G.oof_scores(rows, G.BASE, folds=a.folds)[0]
+        TAU = G.load_lua_model(G.LUA_MODEL)[1]
+    else:
+        rows = S.load_v2()
+        if a.domain != "all":
+            rows = [r for r in rows if r["domain"] == a.domain]
+        sents = load_sents()
+        X = S.mat(rows, DEP)
+        y = np.array([1 if r["ok"] else 0 for r in rows])
+        import lightgbm as lgb
+        P = dict(n_estimators=300, learning_rate=0.05, num_leaves=15,
+                 min_child_samples=60, subsample=0.9, subsample_freq=1,
+                 colsample_bytree=0.8, reg_lambda=1.0, random_state=7,
+                 verbose=-1)
+        half = np.array([M.half_of(r) for r in rows])
+        oof = np.zeros(len(rows))
+        for A, B in ((0, 1), (1, 0)):
+            itr, ite = half == A, half == B
+            oof[ite] = lgb.LGBMClassifier(**P).fit(
+                X[itr], y[itr]).predict_proba(X[ite])[:, 1]
     pos = np.array([pos_of(r["sid"], r["m"], sents) for r in rows])
     fire = np.array([(s >= TAU) and (r["f"]["p"] >= P_FLOOR)
                      and (r["lead"] not in TA)

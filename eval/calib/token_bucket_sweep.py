@@ -43,7 +43,9 @@ NAMES = ("a21", "a22", "a31", "a32", "a33")
 K_WINDOW = 6
 
 
-def window_mask(d):
+def window_mask(d, mode="top6"):
+    if mode == "budget":
+        return L.budget_mask(d["nt"], d["gshow"], d["pad"]) & d["has_ce"]
     wm = (~d["pad"]) & (~d["gshow"])
     return wm & (np.cumsum(wm, axis=1) <= K_WINDOW)
 
@@ -116,16 +118,18 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--samples", type=int, default=2000)
     ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--window", default="top6", choices=["top6", "budget"])
     a = ap.parse_args()
     t0 = time.time()
     d = E.load()
-    mask = window_mask(d)
+    mask = window_mask(d, a.window)
     sent = d["sent"]
     half = sent % 2 == 0
     halves = (("A(偶)→B(奇)", half, ~half), ("B(奇)→A(偶)", ~half, half))
     print("=" * 96)
     print(f"按 token 数分桶的 CE 系数标定 · luna 混合窗静态 {d['n']} 窗 · "
-          f"窗 {int(mask.sum() / max(1, (mask.any(1)).sum())):.0f} 席/窗")
+          f"窗 {int(mask.sum() / max(1, (mask.any(1)).sum())):.0f} 席/窗 · "
+          f"{a.window} 口径")
     print(f"基线（现行位置权重）{fmt(BASELINE)}")
     print("=" * 96)
     out = []
@@ -191,7 +195,9 @@ def main():
             w, n, _ = evaluate(d, mask, p, ~half | half)
             parts.append(f"{v:.2f}: {100*w:.2f}/{100*n:.2f}")
         print(f"  {nm}: " + "  ".join(parts))
-    with open(L.EVAL / "token_bucket_sweep.tsv", "w", encoding="utf-8") as f:
+    suffix = "" if a.window == "top6" else "_" + a.window
+    with open(L.EVAL / ("token_bucket_sweep" + suffix + ".tsv"), "w",
+              encoding="utf-8") as f:
         f.write("half\tp\ttrain_wrong\ttrain_nonideal\ttest_wrong\ttest_nonideal\t"
                 "base_test_wrong\tbase_test_nonideal\n")
         for r in out:
@@ -199,7 +205,8 @@ def main():
                     f"{r['train_wrong']:.6f}\t{r['train_nonideal']:.6f}\t"
                     f"{r['test_wrong']:.6f}\t{r['test_nonideal']:.6f}\t"
                     f"{r['base_test_wrong']:.6f}\t{r['base_test_nonideal']:.6f}\n")
-    print(f"\n耗时 {time.time()-t0:.0f}s；TSV → eval/token_bucket_sweep.tsv")
+    print(f"\n耗时 {time.time()-t0:.0f}s；TSV → "
+          f"eval/token_bucket_sweep{suffix}.tsv")
 
 
 if __name__ == "__main__":
