@@ -39,10 +39,12 @@ PROD = dict(w2=1.10, w3=0.60, norm="none", alpha=0.0, lam=0.0)
 FAMS = ("F0", "F1", "F2", "F3", "F4")
 
 
-def load(k_pool=16, k_probe=32):
-    rows = [json.loads(l) for l in open(L.COHORT, encoding="utf-8")]
+def load(k_pool=16, k_probe=32, cohort=None, cands_path=None):
+    """cohort = 16 池口径（默认）；收集池 64（2026-11-26）传
+    cohort=L.COHORT_EXT, cands_path=L.CANDS_EXT, k_pool=k_probe=64。"""
+    rows = [json.loads(l) for l in open(cohort or L.COHORT, encoding="utf-8")]
     rows = [r for r in rows if not r["dyn"]]
-    cands = json.load(open(L.CANDS, encoding="utf-8"))
+    cands = json.load(open(cands_path or L.CANDS, encoding="utf-8"))
     n = len(rows)
 
     def z(shape, fill, dt):

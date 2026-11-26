@@ -117,7 +117,7 @@ def char_freq():
 def build_rows(tag, out, genfile, cfreq):
     cands = json.load(open(out / "cands.json", encoding="utf-8"))
     gen = load_gen_map(out / genfile)
-    ce = L.load_ce()
+    ce = L.load_ce_multi()
     syls_by_sid = {}
     for s in L.jsonl_iter(out / "sentences.jsonl"):
         syls_by_sid[s["sid"]] = s["syls"]

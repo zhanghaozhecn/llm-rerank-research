@@ -7,9 +7,18 @@
 prefix_confirm_2x2.py 共用——动态仿真按需补算时也走这里的入口，产物幂等追加。
 
 口径常量与生产 llm_filter.cc 对齐：
-  K_COLLECT = 16   Collect 上限（kMaxCollect；30ms 预算不模拟）
+  K_COLLECT = 16   Collect 上限（kMaxCollect；30ms 预算不模拟）——**历史口径**，
+                   2026-11-26 线上已是 64，见 K_COLLECT_EXT
   K_WINDOW  = 6    评分窗 max_candidates
   MAX_CTX   = 20   推理上文 token 上限（max_tokens）
+
+**收集池 16 → 64（2026-11-26）**：线上 Collect=64（30ms 预算不变），但本 cohort
+的 CE 只算到 16 条（`ce_lines`/`assemble` 截 `K_COLLECT`），探针上限也只 32
+（`K_PROBE`）——「预算窗」结果全部是 16 池模拟，超出的 1-token 免费候选没有 CE。
+扩池走 `K_COLLECT_EXT = 64`：探针上限、CE 输入、cohort 组装三处统一用它；
+`K_COLLECT` 保持 16，遗留脚本（build_prefix_big / prefix_* / user_freq_feat /
+short_ctx）继续按 16 池口径读旧产物（那些产物里 eng 只有 16 条）。扩池后写
+`cands64.json` / `cohort64.jsonl` / `ce64/results.jsonl`，旧产物原样保留。
 """
 import hashlib
 import json
@@ -44,8 +53,10 @@ MODEL = os.environ.get("GGUF_MODEL_06B",
 LUA_THREADS = os.environ.get("LUNA_MIXED_THREADS", "8")
 
 K_COLLECT = 16
+K_COLLECT_EXT = 64        # 线上 Collect 上限（2026-11-26）；扩池产物用这个
 K_WINDOW = 6
-K_PROBE = 32
+K_PROBE = 32              # **旧**探针上限（probe_out.tsv 的缓存键含此值）
+K_PROBE_EXT = 64          # 扩池探针上限（写 probe_out64.tsv）
 MAX_CTX = 20
 PROBE_SCHEMA = "luna_mixed"
 NGRAM_FILES = ("zi", "jichu", "duoyin", "diming", "mingren", "yiren")
@@ -62,6 +73,13 @@ GENFULL = OUT / "genfull.tsv"
 GEN_TRIED = WORK / "gen_tried.txt"
 CE_DIR = OUT / "ce"
 CE_RESULTS = CE_DIR / "results.jsonl"
+# ── 扩池产物（收集池 64，2026-11-26）──────────────────────────────────
+# 与旧产物完全隔离：cands.json / cohort.jsonl / ce/results.jsonl 一字不动
+# （eng 只有 16 条，遗留脚本照旧按 16 池口径读）。
+CANDS_EXT = OUT / "cands64.json"
+COHORT_EXT = OUT / "cohort64.jsonl"
+CE_DIR_EXT = OUT / ("ce" + str(K_COLLECT_EXT))
+CE_RESULTS_EXT = CE_DIR_EXT / "results.jsonl"
 
 
 def jsonl_iter(path):
@@ -85,32 +103,36 @@ def prepare_probe_user(work=None):
     return user
 
 
-def run_probe(codes, work=None):
-    """码串 → 引擎原序候选 [[text, start, end, quality, type], ...]（≤K_PROBE）。
+def run_probe(codes, work=None, k_probe=None, tag=""):
+    """码串 → 引擎原序候选 [[text, start, end, quality, type], ...]（≤k_probe）。
     结果按（码串清单 md5 + 条数上限）缓存，重跑构建不重复枚举（45k 码 ≈ 5 分钟）。
-    work 可指定独立工作目录（多 cohort 共用入口时不互相踩缓存）。"""
+    work 可指定独立工作目录（多 cohort 共用入口时不互相踩缓存）。
+    k_probe / tag 缺省 = 旧口径（32 / 无后缀 → probe_out.tsv）；扩池用
+    k_probe=K_PROBE_EXT + tag="64" → probe_out64.tsv（缓存戳同带后缀，
+    与旧戳互不覆盖——2026-11-26 收集池 16→64）。"""
     work = Path(work or WORK)
     user = prepare_probe_user(work)
     work.mkdir(parents=True, exist_ok=True)
+    kp = K_PROBE if k_probe is None else int(k_probe)
     fin = work / "probe_codes.txt"
-    fout = work / "probe_out.tsv"
-    stamp = WORK / "probe_out.md5"
+    fout = work / f"probe_out{tag}.tsv"
+    stamp = WORK / f"probe_out{tag}.md5"
     with open(fin, "w", encoding="ascii", newline="\n") as f:
         for c in codes:
             f.write(c + "\n")
-    key = hashlib.md5(fin.read_bytes()).hexdigest() + f":{K_PROBE}"
+    key = hashlib.md5(fin.read_bytes()).hexdigest() + f":{kp}"
     cached = (fout.exists() and stamp.exists()
               and stamp.read_text(encoding="ascii").strip() == key)
     if not cached:
         with open(fin, "rb") as stdin, open(fout, "wb") as stdout, \
-                open(WORK / "probe_err.log", "wb") as stderr:
+                open(WORK / f"probe_err{tag}.log", "wb") as stderr:
             p = subprocess.run([str(PROBE_EXE), str(RIME_DLL), WEASEL_DATA,
-                                str(user), PROBE_SCHEMA, str(K_PROBE)],
+                                str(user), PROBE_SCHEMA, str(kp)],
                                stdin=stdin, stdout=stdout, stderr=stderr,
                                timeout=3600)
         if p.returncode != 0:
             raise SystemExit(
-                f"probe rc={p.returncode}; see {WORK / 'probe_err.log'}")
+                f"probe rc={p.returncode}; see {WORK / f'probe_err{tag}.log'}")
         stamp.write_text(key, encoding="ascii")
     out = {}
     with open(fout, encoding="utf-8") as f:
@@ -270,11 +292,12 @@ def load_genfull():
     return out
 
 
-def ce_lines(ctx, cands):
+def ce_lines(ctx, cands, k_pool=None):
     """一窗的 CE 输入行（sim_rerank 每行 ≤10 候选，不足 2 条用「〇」补位——
-    CE 逐候选独立，补位候选的结果丢弃）。→ [({"context","cands"}, sid)]"""
+    CE 逐候选独立，补位候选的结果丢弃）。→ [({"context","cands"}, sid)]
+    k_pool 缺省 = K_COLLECT（16，历史口径）；扩池传 K_COLLECT_EXT（64）。"""
     out = []
-    pool = list(cands[:K_COLLECT])
+    pool = list(cands[:(K_COLLECT if k_pool is None else k_pool)])
     for i in range(0, len(pool), 10):
         chunk = pool[i:i + 10]
         if len(chunk) < 2:
@@ -284,11 +307,13 @@ def ce_lines(ctx, cands):
     return out
 
 
-def load_ce():
-    """ce/results.jsonl → sid → {text: (ce 分量 list, ntok)}。"""
+def load_ce(path=None):
+    """ce/results.jsonl → sid → {text: (ce 分量 list, ntok)}。
+    path 缺省 = 旧 16 池结果；扩池传 CE_RESULTS_EXT。"""
+    path = Path(path or CE_RESULTS)
     out = {}
-    if CE_RESULTS.exists():
-        with open(CE_RESULTS, encoding="utf-8") as f:
+    if path.exists():
+        with open(path, encoding="utf-8") as f:
             for line in f:
                 try:
                     r = json.loads(line)
@@ -299,15 +324,27 @@ def load_ce():
     return out
 
 
-def run_ce(lines, workers=1):
+def load_ce_multi():
+    """全链路 CE 合并（sid 幂等，同 sid 同 CE）：旧 16 池 + 扩池 64 两目录。
+    扩池后源码目录 `ce/` 与 `ce64/` 都是全链共享，读方一律走这里；
+    写方 `run_ce` 仍写单目录（按缺口补算）。"""
+    out = load_ce(CE_RESULTS_EXT)
+    out.update(load_ce())
+    return out
+
+
+def run_ce(lines, workers=1, out_dir=None):
     """按需补算窗口 3-token CE。lines = ce_lines(...) 的列表 → 追加
     ce/results.jsonl，返回新算行数。workers=1 单进程同步；>1 转交
-    ce/run_ce_cohort.py 线程池（按 sid 断点续跑）。"""
-    have = load_ce()
+    ce/run_ce_cohort.py 线程池（按 sid 断点续跑）。
+    out_dir 缺省 = 旧 16 池目录；扩池传 CE_DIR_EXT。"""
+    out_dir = Path(out_dir or CE_DIR)
+    results = out_dir / "results.jsonl"
+    have = load_ce(results)
     todo = [(ln, sid) for (ln, sid) in lines if sid not in have]
     if not todo:
         return 0
-    CE_DIR.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
     env["SIM_NO_CE_PIPE"] = "1"
     payload = "".join(json.dumps(ln, ensure_ascii=False) + "\n"
@@ -318,7 +355,7 @@ def run_ce(lines, workers=1):
             f.write(payload)
         script = HERE.parent / "ce" / "run_ce_cohort.py"
         p = subprocess.run([sys.executable, str(script), "--input", str(inp),
-                            "--out", str(CE_DIR), "--workers", str(workers),
+                            "--out", str(out_dir), "--workers", str(workers),
                             "--chunk", "500", "--ctx", str(MAX_CTX),
                             "--model", MODEL],
                            capture_output=True, env=env, timeout=7 * 86400)
@@ -335,7 +372,7 @@ def run_ce(lines, workers=1):
         raise RuntimeError(
             f"sim rc={p.returncode} 输出 {len(out_lines)} 行 ≠ 输入 {len(todo)}\n"
             + p.stderr.decode("utf-8", "replace")[-800:])
-    with open(CE_RESULTS, "a", encoding="utf-8") as f:
+    with open(results, "a", encoding="utf-8") as f:
         for (ln, sid), ol in zip(todo, out_lines):
             r = json.loads(ol)
             f.write(json.dumps({"sid": sid, "scores": r.get("scores", {}),

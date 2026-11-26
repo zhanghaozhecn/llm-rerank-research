@@ -373,7 +373,7 @@ def cmd_genfull(a):
 
 def cmd_assemble(a):
     cands = json.load(open(L.CANDS, encoding="utf-8"))
-    ce, gen, full = L.load_ce(), L.load_gen(), L.load_genfull()
+    ce, gen, full = L.load_ce_multi(), L.load_gen(), L.load_genfull()
     n_win = n_miss_ce = 0
     with open(L.COHORT, "w", encoding="utf-8") as f:
         for w in L.jsonl_iter(L.WINDOWS):

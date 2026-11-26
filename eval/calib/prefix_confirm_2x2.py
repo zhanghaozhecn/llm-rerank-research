@@ -62,7 +62,7 @@ class Store:
         self.reload()
 
     def reload(self):
-        self.ce, self.gen, self.full = L.load_ce(), L.load_gen(), L.load_genfull()
+        self.ce, self.gen, self.full = L.load_ce_multi(), L.load_gen(), L.load_genfull()
         self.tried = L.load_gen_tried()
 
     def state(self, wid, missing, need_full=False):

@@ -291,7 +291,7 @@ def main():
     g20p = load_gen(OUT / "gen20_prefixctx.tsv")
     if vs and g20p:
         print("\n⑥ 仅前缀（新文档写到第 m 字，ctx = 真值[:m]；CE 按该上下文）")
-        ce = L.load_ce()
+        ce = L.load_ce_multi()
         pr = []
         for v in vs:
             pool = [c[0] for c in st.cands.get(v["code"], [])[:L.K_COLLECT]]

@@ -30,8 +30,11 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   `prep_user_sc`、`build_user_corpus`、`user_corpus_eval`
 - **ce/**（1）`run_ce_cohort` = CE 跑批统一入口：anchors/samples/input
   三源 × 分片/线程池并行 × 断点续跑 × `--seed-from` 旧链播种
-- **calib/**（28）标定与首选率：`analyze_sc`（单字/词码对 5 合 1）、
+- **calib/**（29）标定与首选率：`analyze_sc`（单字/词码对 5 合 1）、
   `analyze_sel_by_code`、`grid_ctx_cand`（ctx×候选数网格，生产参数）、
+  **`sweep_budget`（2026-11-26：纯 CE 首选率 × CE 预算 B 4–18，真实候选窗 + 生产
+  CE 缓存，`budget_mask` 与 llm_filter 同构；替代旧 tok×cand 网格；产物
+  `eval/sweep_budget_*.tsv`）**、
   `compare_models`（多模型同窗对照）、`fusion_joint`（单格联合扫参）、
   **`fusion_sweep_all`（2026-11-18：逐 (模型,ctx,k) 全网格扫参，
   输出 err / honest(split-half) / err_prod）**、
@@ -44,7 +47,16 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   窗口网格→无头引擎探针→CE/组句/全句 CE 批补，子命令
   sentences/windows/ce_input/gen/genfull/assemble）、`luna_mixed_lib`
   （探针、插件 DLL 批跑、按需补算的公共件 + `luna_mixed_gen.lua` 驱动）、
-  `luna_mixed_eval`（混合窗上的排序公式族评测）、**`luna_mixed_budget`（2026-11-26：CE 预算 12 窗 vs 旧 6/16 窗——覆盖/窗宽/融合 wrong·nonideal 与公式族复核；预算窗 wrong 36.41%、覆盖 77.88%，旧 6 窗 45.41%/62.76%；产物 `eval/luna_mixed_budget.txt`）**、`prefix_confirm_2x2`
+  `luna_mixed_eval`（混合窗上的排序公式族评测）、**`luna_mixed_budget`（2026-11-26：CE 预算 12 窗 vs 旧 6/16 窗——覆盖/窗宽/融合 wrong·nonideal 与公式族复核；预算窗 wrong 36.41%、覆盖 77.88%，旧 6 窗 45.41%/62.76%；产物 `eval/luna_mixed_budget.txt`）**、
+  **`luna_mixed_pool64`（2026-11-26：收集池 16 → 64——探针上限 32→64（前 32 条逐字一致）、
+  CE 池扩到 64（新算 124,671 行；sid 含整块词表，块 2–7 与旧块不重叠，故只有首块复用）、
+  cohort64 组装与 16/32/64 + 预算窗并排；子命令 probe/gap/ce/assemble/compare，
+  `ce` 按批断点续跑，驱动 `luna_mixed_pool64_ce_loop.bat`；产物 `cands64.json` /
+  `cohort64.jsonl` / `ce64/results.jsonl` / `eval/luna_mixed_pool64.txt`；
+  **2026-11-26 已完成**：ce64 新算 109,026 行、ce64 共 146,405 行全齐、0 真缺口
+  （7 条单候选窗的「〇」补位无 CE，生产本就不重排，assemble 计为 pad 不计 miss）；
+  结果 16→64 池 wrong 36.15%→29.44%、nonideal 54.41%→52.75%，预算 12 @ 64 池
+  nonideal 52.43%）**、`prefix_confirm_2x2`
   （前缀确认「窗口路径 × 句级路径」2×2：逐窗静态 + 整句打字动态仿真）、
   `guard_syllables`（2026-11-24：前缀确认守卫标定——码数 vs 音节数，
   按「lead 音节 × 剩余音节」出精度/K 敏感表；结论 = 剩余 ≥2 音节、单字 lead 无例外
@@ -102,6 +114,12 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   0 字 **90.89%**（856 次 78 错）→ 取消；1 字 98.17%（p=0.0007）、
   2–3 字 99.20%（p=0.0014）都显著低于 4–7 字的 **99.81%** → 建议下限抬到
   ≥4 字；1 字与 2–3 字无显著差异（p=0.16），真正分界是 ≤3 vs ≥4）**、
+  **`ce_bias_share`（2026-11-26：**字-音节 CE 偏置**转化式标定——贝叶斯
+  `P(字|上文,读音) ∝ P(字|上文)·P(读音|字)`，候选式 T1 `λ·log share` /
+  T2 logit / T3 尾部截断 / T4 上限；评测 = 单字档 top-1（前缀确认结构证据），
+  16 池冷账本 12,819 窗：基线 78.72% → λ=1 **79.65%（+0.94pp）**，λ 不敏感；
+  wiki 域「高频字低读被 CE 抬高」仅 6 例（主错因不在此），待真实打字域复核；
+  产物 `eval/ce_bias_share.txt`）**、
   **`reading_share`（2026-11-25：多音字读音占比——万象 jichu+shici 建字→
   读音权重表（缓存 `eval/char_readings.tsv`），候选 code span × 文本 DP 对齐
   取 P(读音|字)；按最小 share 分桶 + 5 个特征进模型。结论 = 近 1:1 档最差
@@ -150,18 +168,22 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
 - **pairfix/**（4）现行链：`pairfix_pipeline`（SOP 驱动）、
   `derive_pairfix_full`（唯一现行推导）、`audit_tool`（batch/merge/deploy
   三合一）、`audit_review_union`（M1–M8 机械审查）
-- **bench/**（6）`speed_bench`（推理速度）、`ctx_latency`（ctx×设备均值）、
+- **bench/**（7）`speed_bench`（推理速度）、`ctx_latency`（ctx×设备均值）、
   **`latency_synth`（2026-11-18：合成最坏情况候选取自 anchors，
   `--metric total|prep|step23` 分别给整窗/预填充/候选段，逐窗 SIM_* 计时）**、
+  **`latency_budget`（2026-11-26：CE 预算口径的候选段最坏情况延迟——3-token 花 2、
+  2-token 花 1，首/次 token 均两两不同；B 偶数 = B/2 个 3-token、奇数补 1 个 2-token，
+  `--budgets 4-18`；产物 `eval/latency_budget_*.tsv`）**、
   **`latency_grid`（ctx×k×设备的分位延迟，均值口径）**、
   `ab_upgrade`（llama.cpp 升级 A/B）、`gguf_types`（GGUF 张量体检）
-- **tools/**（19）`check_records_v2`、`run_tests`、`eval_rerank`、
+- **tools/**（20）`check_records_v2`、`run_tests`、`eval_rerank`、
   **`lgb/`（2026-11-25：树模型导出的 Lua 侧基准/加载/对拍四脚本
   （`bench_tree.lua` 通用 `<`/`<=` 两语义、支持 XGB `base` 偏置），
   配套 `calib/prefix_confirm_model.py export` 与 `calib/xgb_vs_lgb.py`；
   150 树/15 叶实测 130 KB / 34 µs/次、对拍 5e-13；300×15 两库均 76 µs）**、
   **`pareto_front`（2026-11-18：(中位延迟, 选重率) 帕累托前沿，可 `--metric
   err|honest|prod`、可选 ctx 池化）**、**`plot_latency`（②③ 的 2×2 拼图，部署档 Q4_K_M）**、
+  **`plot_latency_budget`（2026-11-26：③ 的 CE 预算口径三联图）**、
   **`fit_prefill`（T_prefill 线性拟合 + ctx* 选择：<150ms 且 ≤20；`--extra` 可拟合量化变体）**、
   **`audit_article_session`（2026-11-20：真机文章逐词审计，文章↔语料↔debug↔账本四方
   对照 + W.ctx 文档核对 + 融合算术 + 账本对账；`--since/--until` 定会话）**、
@@ -210,7 +232,18 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   p95 80）但 hit@1 掉到 47%；K=2/rowcap24 每键 107ms、54%——质量与延迟强冲突，
   最优形态是 gram 管逐键、A 路线管异步句末。
   **2026-11-24 用户定案：结论记录在案、不采用**（理由 = 逐键延迟进不了按键路径；
-  现行架构不变）**
+  现行架构不变）**、
+  **`gen_ce_bias_share.py` / `gen_syll_chars.py`（2026-11-26：字-音节 CE 偏置
+  表 + 整读表生成器）**——前者按 `char_readings.tsv` / `2-1-字.xlsx` 出
+  `(字, 音节) → log 占比`（T1，λ=1，≤0 只打折）；后者按**引擎词库**出
+  `音节 → 整读字串`（`syll_chars.tsv`，全拼 419 行/49,446 字，pdsp 603 行/
+  9,166 字），供单字「整读 / 前缀简拼」分层与双拼「2 码音 + 形」偏置键解析
+  （4 码自动生效）。两表都写各方案目录 `llm_rerank/<方案>/`；分析脚本见
+  `calib/scratch/`：`prefix_probe.py`（引擎权重口径的前缀劫持）、
+  `tier_probe2.py`（16 池 CE 口径）、`tier_gate_pool64.py`（64 池劫持率 +
+  gate 取法结构口径）、`gate_span_eval.py`（「同字数档 vs 同 span 取首选」带
+  现役树模型门的离线评估）、`budget_and_gate_single.py`（预算窗行数/CE 行 +
+  单字 lead 的 1 字档占位）、`pool64_recal.py`（预算扫描 + 公式族重跑）**
 
 ## 约定
 
@@ -218,4 +251,10 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   lib 内互导无需 hack（脚本目录自动在 sys.path）。
 - `corpus_std.PROJ` = 研究库根、`corpus_std.EVAL` = eval 根——**报告/工作
   数据写 EVAL，链数据写 PROJ**（cohort_* 链、CE 缓存等）。
+- **C 行 v8（2026-11-26 整句词频归因）**：尾字段 `path` = `词:码/词:码/…`；
+  `iter_commits` 解析为 `path=[(词, 码)…]`（旧行无该字段 = `[]`）；
+  `iter_word_stream(expand=True)` 按 path 展开词流——整句模式的词流从
+  「句子」变「词」（默认 False = 旧行为，既有标定口径不变）。归因机制
+  （已确认段逐词入账 / 提交级 tick / 四重校验）见两版 README
+  「整句词频归因」节。
 - 合并映射与归档原件见 `legacy-20261117/removed-scripts-20261117/merged-20261118/README.md`。

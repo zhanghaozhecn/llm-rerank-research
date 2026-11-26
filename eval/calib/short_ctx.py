@@ -127,14 +127,14 @@ def main():
         for n in ctxs:
             ctx = (s.get("before") or "")[-n:] if n else ""
             ce_lines += L.ce_lines(ctx, need)
-    have = L.load_ce()
+    have = L.load_ce_multi()
     todo = [(ln, sid) for (ln, sid) in ce_lines if sid not in have]
     print(f"[ce] 需 {len(ce_lines)} 条，缓存缺 {len(todo)} 条", flush=True)
     STEP = 8000
     for i in range(0, len(todo), STEP):
         L.run_ce(todo[i:i + STEP], workers=8)
         print(f"[ce] {min(i + STEP, len(todo))}/{len(todo)}", flush=True)
-    ce = L.load_ce()
+    ce = L.load_ce_multi()
 
     # —— 造行 + 判定
     cfreq = M.char_freq()

@@ -348,7 +348,7 @@ def build(limit=None, mode=None):
     for tag, out, gf in DATA:
         cands = json.load(open(out / "cands.json", encoding="utf-8"))
         gen = M.load_gen_map(out / gf)
-        ce = L.load_ce()
+        ce = L.load_ce_multi()
         syls = {s["sid"]: s["syls"]
                 for s in L.jsonl_iter(out / "sentences.jsonl")}
         nw = 0

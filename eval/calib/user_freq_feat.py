@@ -86,7 +86,7 @@ def main():
     cands = {}
     for d in (L.OUT, L.EVAL / "prefix_big"):
         cands.update(json.load(open(d / "cands.json", encoding="utf-8")))
-    ce = L.load_ce()
+    ce = L.load_ce_multi()
 
     extra, miss = [], 0
     for r in rows:

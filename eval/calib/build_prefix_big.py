@@ -233,7 +233,7 @@ def load_gen_map(path=GEN2):
 def cmd_ce(a):
     cands = json.load(open(CANDS2, encoding="utf-8"))
     g20 = load_gen_map()
-    ce = L.load_ce()
+    ce = L.load_ce_multi()
     lines, n_win, n_cached = [], 0, 0
     for w in L.jsonl_iter(WINS2):
         if len(w["code"]) < 4:
@@ -266,7 +266,7 @@ def cmd_ce(a):
 
 def cmd_assemble(a):
     cands = json.load(open(CANDS2, encoding="utf-8"))
-    ce, gen = L.load_ce(), load_gen_map()
+    ce, gen = L.load_ce_multi(), load_gen_map()
     n_win = n_miss = n_gen = 0
     with open(COHORT2, "w", encoding="utf-8") as f:
         for w in L.jsonl_iter(WINS2):

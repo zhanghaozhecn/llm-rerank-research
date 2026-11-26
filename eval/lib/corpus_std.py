@@ -630,7 +630,10 @@ def iter_events(path=None):
                        "code": _unesc(fld[5]), "rank_engine": _int(fld[6]),
                        "rank_window": _int(fld[7]),
                        "rank_final": _int(fld[8]), "tick": _int(fld[9]),
-                       "flags": fld[10]}
+                       "flags": fld[10],
+                       # v8（2026-11-26 整句词频归因）：可选第 12 字段 path =
+                       # 「词:码/词:码/…」；旧行无该字段 = ""（解析为 []）
+                       "path": _unesc(fld[11]) if len(fld) >= 12 else ""}
             elif t == "M" and len(fld) >= 7:
                 yield {"type": "M", "id": fld[1], "ts": fld[2],
                        "ref": fld[3], "kind": fld[4], "detail": fld[5],
@@ -645,6 +648,22 @@ def iter_events(path=None):
 
 RETRACT_KINDS = {"backspace", "delete", "undo-clipboard"}
 BOUNDARY_KINDS = {"scene", "focus", "navigation", "enter"}
+
+
+def parse_attr_path(s):
+    """v8 C 行 path 字段 → [(词, 码), …]；空/缺 = []（2026-11-26 归因）。
+
+    格式 = `词:码/词:码/…`（词只含 CJK、码只含小写字母，`:` 与 `/` 不会
+    出现在词或码内）；段非法（缺 `:` / 空词）整段跳过。
+    """
+    out = []
+    for seg in (s or "").split("/"):
+        if not seg:
+            continue
+        w, _, c = seg.partition(":")
+        if w and c:
+            out.append((w, c))
+    return out
 
 
 def is_nofreq(ev):
@@ -689,6 +708,8 @@ def iter_commits(path=None, include_retracted=True, reset_mode="strict"):
         w = wins.get(e["ref"]) if e.get("ref") else None
         d = dict(e)
         d["scene"] = scene
+        # v8（2026-11-26 整句词频归因）：path 原串 → [(词, 码), …]
+        d["path"] = parse_attr_path(e.get("path"))
         d["engine"] = w["engine"] if w else []
         d["window"] = w["window"] if w else []
         d["final"] = w["final"] if w else []
@@ -743,10 +764,19 @@ def iter_scenes(path=None, reset_mode="strict"):
     return scenes
 
 
-def iter_word_stream(path=None, include_retracted=True):
-    """扁平词流（旧 21 个 sweep/user 脚本口径；默认含被回撤提交）。"""
+def iter_word_stream(path=None, include_retracted=True, expand=False):
+    """扁平词流（旧 21 个 sweep/user 脚本口径；默认含被回撤提交）。
+
+    expand=True（2026-11-26 整句词频归因）：C 行带 v8 path 时按归因词
+    逐个产出（整句模式的词流从"句子"变"词"）；无 path 的提交仍产出
+    word 整体。默认 False = 旧行为（word 原样），既有标定口径不变。
+    """
     for c in iter_commits(path, include_retracted=include_retracted):
-        yield c["word"]
+        if expand and c.get("path"):
+            for w, _ in c["path"]:
+                yield w
+        else:
+            yield c["word"]
 
 
 def load_legacy_training(path):
