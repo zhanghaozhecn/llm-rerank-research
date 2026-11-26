@@ -42,31 +42,41 @@ PARAMS = dict(n_estimators=300, learning_rate=0.05, num_leaves=15,
 TARGET_VOL = 0.90
 
 
-def train(rows):
+def train(rows, folds=2, target_vol=0.90, target_n=None):
     import lightgbm as lgb
-    X = np.array([[r["f"][c] if c in r["f"] else r["g"][c] for c in DEP]
-                  for r in rows], float)
+    X = np.array([[r["f"].get(c, r["g"].get(c, r["c"].get(c, 0.0)))
+                   for c in DEP] for r in rows], float)
     y = np.array([1 if r["ok"] else 0 for r in rows])
     clf = lgb.LGBMClassifier(**PARAMS).fit(X, y)
     oof = np.zeros(len(rows))
-    for A, B in ((0, 1), (1, 0)):
-        itr = [i for i, r in enumerate(rows) if M.half_of(r) == A]
-        ite = [i for i, r in enumerate(rows) if M.half_of(r) == B]
+    if folds == 2:
+        grp = np.array([M.half_of(r) for r in rows])
+    else:
+        uniq = sorted({r["sid"] for r in rows})
+        gid = {k: kk % folds for kk, k in enumerate(uniq)}
+        grp = np.array([gid[r["sid"]] for r in rows])
+    for g in range(folds):
+        ite = grp == g
+        itr = ~ite
         oof[ite] = lgb.LGBMClassifier(**PARAMS).fit(
             X[itr], y[itr]).predict_proba(X[ite])[:, 1]
     fire = np.array([r["fire"] for r in rows])
-    y = np.array([r["ok"] for r in rows], bool)
-    # τ = 覆盖「现行触发量的 90%」所需的分数（在全域可触发集合上取分位——
-    # 生产侧模型取代 P≥0.95 硬门后，p<0.95 的窗也参与，量按现行触发量折算）
+    yb = y.astype(bool)
+    # τ = 覆盖「现行触发量的 90%」所需的分数（P≥0.95 结构触发量；新规则下
+    # 含同档新增行）。target_n 可显式覆盖（对齐某个部署量）。
     ntrig = int(fire.sum())
-    target = int(round(TARGET_VOL * ntrig))
+    target = int(target_n or round(target_vol * ntrig))
     order = np.argsort(-oof)
     tau = float(oof[order[target - 1]])
     sel = order[:target]
-    print(f"[train] {len(DEP)} 特征 / {clf.booster_.num_trees()} 树；OOF τ={tau:.6f}"
-          f" → 保留 {target}（= 现行触发 {ntrig} 的 {100*TARGET_VOL:.0f}%），"
-          f"精度 {100*y[sel].mean():.2f}%（其中 p<0.95 的 "
-          f"{int((~fire[sel]).sum())} 例）")
+    add = sum(1 for i in sel if not rows[i]["old_rule"]) \
+        if "old_rule" in rows[0] else 0
+    print(f"[train] {len(rows)} 行 / {len(DEP)} 特征 / "
+          f"{clf.booster_.num_trees()} 树 / {folds} 折 OOF；τ={tau:.9f}"
+          f" → 目标 {target}（= P≥0.95 结构触发 {ntrig} 的 "
+          f"{100*TARGET_VOL:.0f}%），精度 {100*yb[sel].mean():.2f}%"
+          f"（错 {int((~yb[sel]).sum())}；其中 p<0.95 "
+          f"{int((~fire[sel]).sum())} 例；新增 {add}）")
     return clf, tau
 
 
@@ -98,7 +108,7 @@ def dump_trees(clf):
 
 def write_lua(path, trees, tau, freq):
     L = ["-- 前缀确认门（LightGBM 300×15，53 特征 = 41+ss12）自动生成，勿手改",
-         "-- 生成：eval/calib/export_prefix_gate.py（研究库 2026-11-25）",
+         "-- 生成：eval/calib/export_prefix_gate.py（研究库；2026-11-26 同档新规则重训）",
          "-- feats = 特征向量顺序；f 下标 1-based（0=叶）；score∈[0,1]",
          "return {",
          " n=%d," % len(trees),
@@ -124,7 +134,7 @@ def write_lua(path, trees, tau, freq):
 
 def write_h(path, trees, tau, freq):
     L = ["// 前缀确认门（LightGBM 300×15，53 特征 = 41+ss12）自动生成，勿手改",
-         "// 生成：eval/calib/export_prefix_gate.py（研究库 2026-11-25）",
+         "// 生成：eval/calib/export_prefix_gate.py（研究库；2026-11-26 同档新规则重训）",
          "// 用法：按 kFeats 顺序装 53 维特征 → 每棵树从根 1 走到 f==0 的叶，",
          "//       sum v[node] → p=1/(1+exp(-sum))；p >= kTau 才确认。",
          "#pragma once",
@@ -174,14 +184,36 @@ def write_h(path, trees, tau, freq):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(M.L.EVAL / "lgb"))
+    ap.add_argument("--rows", default="v2", choices=["v2", "class"],
+                    help="v2 = 旧 cohort（2026-11-25 模型）；class = "
+                         "同档新规则预算窗行（2026-11-26 重训）")
+    ap.add_argument("--min-ctx", type=int, default=0,
+                    help="只训练 ctx≥N 字（生产有效上文门；class 建议 4）")
+    ap.add_argument("--folds", type=int, default=2)
+    ap.add_argument("--target-n", type=int, default=0,
+                    help="显式目标确认量（0 = 90% × P≥0.95 结构触发量）")
+    ap.add_argument("--lua", default="", help="lua 输出路径（空 = out 下）")
+    ap.add_argument("--h", default="", help="h 输出路径（空 = out 下）")
     a = ap.parse_args()
-    rows = S.load_v2()
-    clf, tau = train(rows)
+    if a.rows == "class":
+        import prefix_class_gate as G
+        rows = [r for r in G._load_rows(
+            G.L.EVAL / "prefix_class_rows_budget.jsonl")
+            if r["f"]["ctx_len"] >= a.min_ctx and r["f"]["p"] >= 0.5]
+        print(f"[load] class 行 {len(rows)}（budget 窗，p≥0.5，"
+              f"ctx≥{a.min_ctx}）")
+    else:
+        rows = S.load_v2()
+        if a.min_ctx:
+            rows = [r for r in rows if r["f"]["ctx_len"] >= a.min_ctx]
+        print(f"[load] v2 行 {len(rows)}（ctx≥{a.min_ctx}）")
+    clf, tau = train(rows, folds=a.folds,
+                     target_n=(a.target_n or None))
     trees = dump_trees(clf)
     cfreq = M.char_freq()
     os.makedirs(a.out, exist_ok=True)
-    lp = os.path.join(a.out, "prefix_gate_model.lua")
-    hp = os.path.join(a.out, "prefix_gate_model.h")
+    lp = a.lua or os.path.join(a.out, "prefix_gate_model.lua")
+    hp = a.h or os.path.join(a.out, "prefix_gate_model.h")
     write_lua(lp, trees, tau, cfreq)
     write_h(hp, trees, tau, cfreq)
     print(f"[export] {lp} {os.path.getsize(lp)/1024:.0f} KB")

@@ -142,7 +142,7 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   多/多 99.42% 86.39%。**`ablate`（53 特征分组 LOO）**：只有
   ngram/lead 先验（−0.12pp / AUC −0.0094）与 ss12（−0.12pp / −0.0070）
   有实质贡献，其余组 Δ≤±0.05pp；最小 4 特征 p/d/ce1/wm 差 0.68pp。产物
-  `eval/prefix_class_current.txt` / `eval/prefix_class_ablate.txt`）**
+  `eval/prefix_class_current.txt` / `eval/prefix_class_ablate.txt`）；**2026-11-26 晚已按新规则重训树**（训练集 = 预算窗 class-first 22,319 行、53 特征、5 折 OOF；τ=0.977630192，运行点 OOF 99.46% / 召回 75.80%；导出命令 `export_prefix_gate.py --rows class --min-ctx 4 --folds 5`）**
 - **pairfix/**（4）现行链：`pairfix_pipeline`（SOP 驱动）、
   `derive_pairfix_full`（唯一现行推导）、`audit_tool`（batch/merge/deploy
   三合一）、`audit_review_union`（M1–M8 机械审查）
