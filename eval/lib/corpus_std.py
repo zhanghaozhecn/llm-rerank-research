@@ -616,6 +616,13 @@ def iter_events(path=None):
             fld = line.split("\t")
             t = fld[0]
             if t == "W" and len(fld) >= 14:
+                # v9（2026-11-27 联想类标）：可选第 15 字段 comp =
+                # 「窗内位次;最终序位次」（1 基、逗号分隔）；旧行 → 空元组
+                comp_w, comp_f = (), ()
+                if len(fld) >= 15 and fld[14].startswith("comp="):
+                    a, _, b = fld[14][5:].partition(";")
+                    comp_w = tuple(int(x) for x in a.split(",") if x.strip())
+                    comp_f = tuple(int(x) for x in b.split(",") if x.strip())
                 yield {"type": "W", "id": fld[1], "ts": fld[2],
                        "src": fld[3], "code": _unesc(fld[4]),
                        "ctx": _unesc(fld[5]), "engine": _split_cands(fld[6]),
@@ -623,7 +630,8 @@ def iter_events(path=None):
                        "final": _split_cands(fld[8]),
                        "tick": _int(fld[9]), "status": fld[10],
                        "skip": _unesc(fld[11]), "prep": fld[12],
-                       "flags": fld[13]}
+                       "flags": fld[13],
+                       "comp_window": comp_w, "comp_final": comp_f}
             elif t == "C" and len(fld) >= 11:
                 yield {"type": "C", "id": fld[1], "ts": fld[2],
                        "ref": fld[3], "word": _unesc(fld[4]),

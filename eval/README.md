@@ -246,6 +246,7 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   单字 lead 的 1 字档占位）、`pool64_recal.py`（预算扫描 + 公式族重跑）、`gate_pick_probe.py`（gate 取法解锁窗）**
 - **2026-11-27**：`big64_plan.py`（prefix_big 训练行廉价过滤 + CE 缺口估算）、`big64_ce.py`（prefix_big 64 池按需回填：probe64/bench/ce/assemble，只算能成为 gate 训练行的 31,001 窗，CE 写共享 `ce64/results.jsonl`）
 - **门 64 池重训主线**（calib，非 scratch）：`prefix_gate_pool64.py`（build = cohort64→span 域训练行；train = 诚实 OOF + 三臂对比 + 导出`lgb/prefix_gate_model_pool64.{lua,h}`，2026-11-27 采用 τ=0.984372）
+- **2026-11-27**：`comp_positions.py`（**W 行 v9 `comp` 类标统计**，todo P0-2「确认门新增触发精度」配套）——读 `comp=窗内位次;最终序位次`（只统计带该字段的行，旧行/skip 行不进分母）：①联想窗占比 ②窗内/最终序位次直方图 ③「联想占窗内第 1 位」窗数与占比（= 门新增触发候选窗上界，此前该窗必返回 nil）与「联想占最终序第 1 位」（显示序回归指标，大幅 >0 = 同 span 精确词没压住联想）④C 行 join（`C.ref`→W id，首词取 `path[0]`）：联想占窗首时提交首词==窗首联想词的比例（≈ 若门自动确认窗首联想的正确率）+ 联想被选重的位次分布。`--json` 另存。
 - **真机逐键监控**（ime 仓 `scripts/type_monitor_wiki.py`，本机维护）：wiki 长句 × 上文 0-8 字、100ms/键，逐键读 corpus W + debug pfx；2026-11-27 深夜轮验证 重训模型确认链真机触发（日志 `scratch/type_wiki_*.log`，排障叙事见 ime 仓 `memory/fix-history.md`——TSF 三层上文缺陷 + debug 写入器轮转断笔）
 
 ## 约定
@@ -260,5 +261,11 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   「句子」变「词」（默认 False = 旧行为，既有标定口径不变）。归因机制
   （已确认段逐词入账 / 提交级 tick / 四重校验）见两版 README
   「整句词频归因」节。
+- **W 行 v9（2026-11-27 联想类标）**：尾字段 `comp=窗内位次;最终序位次`
+  （1 基、≤20、逗号分隔，空 = 无联想候选）；`iter_events` 解析为
+  `comp_window` / `comp_final` 两个 int 元组（旧 14 字段行 = 空元组）。
+  用途：离线统计联想/补全候选（原生 `type=completion`，词条码比输入长）的
+  位次与选重率——**不要再用「字数 > 音节数」启发式**：同 span 不同切分
+  （`余额`=yu+e vs `月`=yue）会误判，组句字数也≠音节数。
 - 合并映射与归档原件见 `legacy-20261117/removed-scripts-20261117/merged-20261118/README.md`。
 - **无头逐键延迟基准**（ime 仓 `scripts/bench_key.cpp` → `bin/bench_key.exe`，本机维护）：LoadLibrary 指定 rime.dll + 沙箱用户目录逐键 `process_key` 计时，隔离引擎/llm_filter 与 weasel IPC 层；需独占（先停 WeaselServer）。2026-11-27 以它 + 沙箱 A/B 定位「space 被吞」根因 = debug_fusion 逐行写税（整句 +288ms/键），见 fix-history。
