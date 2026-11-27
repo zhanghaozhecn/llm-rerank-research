@@ -8210,3 +8210,24 @@ lua 兜底 τ 常数同步。
 **验证**：smoke_ce_bias 十段全绿；`smoke_prefix_gate_model.lua` 判定域
 期望同步改 span 口径后 29 pass / 0 fail；数值对拍 `pg_lua.tsv` vs
 `pg_ref.tsv` 22/22 maxdiff 5e-13。
+
+**真机验证（2026-11-27 深夜，100ms/键连续打字）**：重训模型随 TSF 上文
+修复一并上真机——9 轮 wiki 16 字长句 × 上文 0-8 字，逐键同步读 corpus +
+debug。上文全程存活（TSF 空读分类修复，见源码版 fix-history）后，确认链
+首次在连续快打下触发：`pending='过去' p=1.000 ctx=8 mp=0.9891/0.9952/
+0.9864/0.9947/0.9883 ≥ τ=0.9844` → `exec select '过去'`（目标前缀正确、
+保持到提交）；全场门统计 enter 293 / 数值判分拒绝 36 / freq_only 合法拒
+113 / guard 58 / rank1 41。同音错字（太晚/台湾、涨势/张是、里我付/利沃夫）
+= 0.6B base 对生僻专名的重构极限，属 CE 偏置/账本机制的管辖域。
+监控工具 `rime-llm-ime/scripts/type_monitor_wiki.py`（真机逐键打字监控，
+wiki 句 × 上文 0-8 字），日志 `eval/calib/scratch/type_wiki_*.log`。
+
+**复测（2026-11-27 上午，50-150ms 随机正态节奏 + 吞键取证）**：首跑全量
+污染暴露 `debug_fusion=true` 的逐行写税——整句模式每键 ~41 条 D 行 + live
+广播 ≈ +288ms/键（无头 bench + 沙箱 A/B + Collect 分段探针三重实锤，
+破案叙事见源码版 fix-history），此前 runs 4/7 的「space 落刷新窗被吞」
+即此积压的假象、非 TSF 竞态。luna 改 debug_fusion=false 后重测：712 键
+med 8.6ms / p90 129ms / max 169ms / 慢键 0；9 轮 + 10 定点探测（空格落
+109-125ms 刷新窗内）零吞键；确认门静默照常开火（run 9 C 行
+`path=过去:guoqu/…`）。同音错字谱系不变。教训入 AGENTS §一·五：
+debug_fusion 是重诊断开关，生产勿常开，每键批量落盘待办（两版同步）。

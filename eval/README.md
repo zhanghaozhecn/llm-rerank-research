@@ -246,6 +246,7 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   单字 lead 的 1 字档占位）、`pool64_recal.py`（预算扫描 + 公式族重跑）、`gate_pick_probe.py`（gate 取法解锁窗）**
 - **2026-11-27**：`big64_plan.py`（prefix_big 训练行廉价过滤 + CE 缺口估算）、`big64_ce.py`（prefix_big 64 池按需回填：probe64/bench/ce/assemble，只算能成为 gate 训练行的 31,001 窗，CE 写共享 `ce64/results.jsonl`）
 - **门 64 池重训主线**（calib，非 scratch）：`prefix_gate_pool64.py`（build = cohort64→span 域训练行；train = 诚实 OOF + 三臂对比 + 导出`lgb/prefix_gate_model_pool64.{lua,h}`，2026-11-27 采用 τ=0.984372）
+- **真机逐键监控**（ime 仓 `scripts/type_monitor_wiki.py`，本机维护）：wiki 长句 × 上文 0-8 字、100ms/键，逐键读 corpus W + debug pfx；2026-11-27 深夜轮验证 重训模型确认链真机触发（日志 `scratch/type_wiki_*.log`，排障叙事见 ime 仓 `memory/fix-history.md`——TSF 三层上文缺陷 + debug 写入器轮转断笔）
 
 ## 约定
 
@@ -260,3 +261,4 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   （已确认段逐词入账 / 提交级 tick / 四重校验）见两版 README
   「整句词频归因」节。
 - 合并映射与归档原件见 `legacy-20261117/removed-scripts-20261117/merged-20261118/README.md`。
+- **无头逐键延迟基准**（ime 仓 `scripts/bench_key.cpp` → `bin/bench_key.exe`，本机维护）：LoadLibrary 指定 rime.dll + 沙箱用户目录逐键 `process_key` 计时，隔离引擎/llm_filter 与 weasel IPC 层；需独占（先停 WeaselServer）。2026-11-27 以它 + 沙箱 A/B 定位「space 被吞」根因 = debug_fusion 逐行写税（整句 +288ms/键），见 fix-history。
