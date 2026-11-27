@@ -94,12 +94,30 @@ def jsonl_iter(path):
 
 
 def prepare_probe_user(work=None):
-    """探针用户目录 = 研究方案 + lua 滤镜 + default.custom（全新 userdb）。"""
+    """探针用户目录 = 研究方案 + lua 滤镜 + default.custom（全新 userdb）。
+    2026-11-28 基线重采：另放真实账本快照（→ llm_rerank/luna_mixed/
+    user_ledger.tsv）——账本有序源在 engine 层按方案目录读账本，研究池
+    须与生产同源（B2 起引擎序含账本热词；无账本 = 池退回旧行为）。
+    快照每次调用刷新（真机账本演进后重跑 probe 自动跟进）。"""
     user = Path(work or WORK) / "user"
     (user / "lua").mkdir(parents=True, exist_ok=True)
     for name in ("luna_mixed.schema.yaml", "default.custom.yaml"):
         shutil.copy2(PROBE_SRC / name, user / name)
     shutil.copy2(PROBE_SRC / "lua" / "dump_span.lua", user / "lua" / "dump_span.lua")
+    try:
+        led = RIME_USER / "llm_rerank" / "luna_pinyin" / "user_ledger.tsv"
+        if led.exists():
+            # 两处都放：luna_mixed 无 llm_filter → g_schema_dir 空 → 引擎侧
+            # 账本读取退回 llm_rerank **根**（llm_file_path_ex migrate 回退）；
+            # 方案目录那份留给未来研究方案挂 llm_filter 时用。
+            root_dir = user / "llm_rerank"
+            root_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(led, root_dir / "user_ledger.tsv")
+            dst = root_dir / "luna_mixed"
+            dst.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(led, dst / "user_ledger.tsv")
+    except OSError:
+        pass
     return user
 
 
