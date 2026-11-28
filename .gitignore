@@ -44,6 +44,8 @@ cpp/*
 !/cpp/build_sent_score.bat
 !/cpp/luna_mixed_probe.cpp
 !/cpp/build_luna_mixed_probe.bat
+# CE 上文锚同步（2026-11-28）：生产重放口径唯一载体，源码须入库
+!/cpp/sim_rerank.cpp
 
 # 工具目录内仍排除的数据/缓存形态
 __pycache__/
