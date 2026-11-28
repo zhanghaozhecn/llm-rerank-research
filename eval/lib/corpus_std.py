@@ -19,6 +19,7 @@ calibrate_lenweight / sim_gpu_parallel）一律 import 本模块，禁止本地�
   上下文  存储 CTX_TAIL 字尾；推理末 MAX_CTX_TOK token（=生产 max_ctx）
   键      window_key = md5(去空白ctx + b"\\0" + 各窗词 + b"\\x01")（不含 eff → τ 改变缓存仍复用）
 """
+import datetime
 import hashlib
 import json
 import math
@@ -45,6 +46,14 @@ SEED = 42             # 一切随机化的种子
 ASCII_LIMIT = 0.20    # 文章级 ASCII 占比过滤阈值（2026-11-05 用户定案 10%→20%：
                       # 10% 是句子级口径误搬到文章级——单峰分布正切峰腹, 计算机
                       # 科学/地质学类核心条目(15-16%)整篇被丢; 20% = 96万/153.7万篇）
+
+# ── CE 上文锚口径时代（2026-11-28）──
+# 生产当日时间线：14:0x 部署 ≤2 token 锚过渡版（精确分钟未记录）、15:06 换
+# n=1 锚终版。历史 W 行无锚标记时按 ts 分界推断；**新语料（两版写入端
+# 2026-11-28 起带 flags=anchor）一律用 ctx_anchored() 按 flags 直判**，
+# ts 推断只兜历史底。注释里 14:00 为保守上界（14:0x 的整分下取）。
+CTX_ANCHOR_TRANS = "2026-11-28 14:00:00"   # ≤2 token 锚过渡版上线（保守上界）
+CTX_ANCHOR_SINCE = "2026-11-28 15:06:00"   # n=1 锚终版上线（精确）
 
 # ── 语料路径注册表（env 覆盖集中此处；新脚本不得自带路径常量）──
 # 2026-11-18 子目录重组后本模块住 eval/lib/，研究库根 = 上两级
@@ -683,6 +692,46 @@ def is_nofreq(ev):
     数值、把"无 CE"误报成"评分失败"。
     """
     return ev.get("type") == "W" and "nofreq" in (ev.get("flags") or "")
+
+
+def anchor_era(ts):
+    """事件 ts（`YYYY-MM-DD HH:MM:SS[.mmm]`）→ CE 上文锚口径时代。
+
+    返回 `'none'`（2026-11-28 14:00 前 = 无锚）/ `'le2'`（14:00–15:06 =
+    ≤2 token 锚过渡版）/ `'n1'`（15:06 起 = 仅 1 token 锚终版）。过渡版
+    起点精确分钟未记录，14:00 为保守上界。**只兜无 flags 的历史行**：
+    新语料用 ctx_anchored() 按 flags 直判。
+    """
+    t = datetime.datetime.fromisoformat(ts)
+    if t >= datetime.datetime.fromisoformat(CTX_ANCHOR_SINCE):
+        return "n1"
+    if t >= datetime.datetime.fromisoformat(CTX_ANCHOR_TRANS):
+        return "le2"
+    return "none"
+
+
+def ctx_anchored(ev):
+    """W 行该窗 CE 评分上文是否被垫「。」锚（flags=anchor，2026-11-28）。
+
+    新语料（两版写入端 2026-11-28 起）flags 直接带 `anchor`（挂账回填为
+    `async,anchor`），按 flags 直判。**历史行（无锚标记）按 ts + 上文长度
+    推断**：终版口径下 1 字上文 ≈ 1 token（语料中文为主；ASCII 单字符同
+    1 token，2 字符 ASCII 词被垫成 2 token 的歧义忽略——罕见且 1 字符
+    上文本就极罕见）；过渡版口径下 1–2 字都被垫；更早无锚。ctx 为
+    归一化末 120 字文本，粗口径足够口径分界用。
+    """
+    if ev.get("type") != "W":
+        return False
+    flags = ev.get("flags") or ""
+    if "anchor" in flags:
+        return True
+    era = anchor_era(ev.get("ts", ""))
+    n = len(ev.get("ctx") or "")
+    if era == "n1":
+        return n == 1
+    if era == "le2":
+        return 1 <= n <= 2
+    return False
 
 
 def iter_commits(path=None, include_retracted=True, reset_mode="strict"):

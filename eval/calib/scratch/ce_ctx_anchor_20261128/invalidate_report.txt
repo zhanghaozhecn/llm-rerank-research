@@ -1,0 +1,4 @@
+CE 缓存锚口径失效报告（2026-11-28）
+过期 sid：ce 13925 / ce64 3159 / 并集 16511
+D:\llm-rerank\llm-rerank-research\eval\luna_mixed\ce\results.jsonl: 总 215979 行，过期命中 12573
+D:\llm-rerank\llm-rerank-research\eval\luna_mixed\ce64\results.jsonl: 总 333628 行，过期命中 3351

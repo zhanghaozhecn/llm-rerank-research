@@ -75,7 +75,9 @@ static const llama_vocab* g_anchor_vocab = nullptr;
 static int g_anchor_tok = -1;
 static std::vector<llama_token> ctx_ids_for_ce(std::vector<llama_token> ids) {
     static const bool kOn = !(getenv("SIM_CTX_ANCHOR") && getenv("SIM_CTX_ANCHOR")[0] == '0');
-    if (!kOn || ids.size() > 1) return ids;
+    // 仅恰 1 token（ids.size()==1）垫锚：空上文（n=0）不垫——锚只在 n=1
+    // 验证过，n=0 保持裸口径才能与 2026-11-25 short_ctx 等既有结果可比。
+    if (!kOn || ids.size() != 1) return ids;
     if (g_anchor_vocab != g_vocab) {
         auto t = tokenize("。");
         g_anchor_tok = t.empty() ? -1 : (int)t[0];

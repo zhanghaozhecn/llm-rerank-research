@@ -1,0 +1,64 @@
+[pick] 句首窗候选 15384
+[pick] 采样 12000 句 × ctx [0, 1, 2, 3, 4, 5, 6, 7]
+[gen] 96000 窗 →
+[gen] 有组句 57552/96000
+[ce] 需 96000 条，缓存缺 0 条
+
+[结果] 按上文长度（全部按生产口径判门）
+ctx   样本   确认   正确率   错
+ 0     1547    856    90.89%    78
+ 1     1963    560    97.68%    13
+ 2     2076    593    98.99%     6
+ 3     2207    903    99.34%     6
+ 4     2260    898    99.89%     1
+ 5     2290    995    99.80%     2
+ 6     2323   1140    99.74%     3
+ 7     2353   1182    99.83%     2
+
+[0 字上文] 错例
+  码=kandamaxiansheyoushugebulu 句「坎达马县设有数个部落保留地」 确认「看」 vs 真值「坎」
+  码=renwukefujianxiangshidiershiyimingjuren 句「壬午科福建乡试第二十一名举人」 确认「任务」 vs 真值「壬午」
+  码=renfuji              句「任福建邵武府建宁县知县」 确认「人」 vs 真值「任」
+  码=qiyuguangfu          句「起于广福路」 确认「其余」 vs 真值「起于」
+  码=bingwuyilin          句「丙午以麟经魁浙榜第四名」 确认「并无」 vs 真值「丙午」
+  码=hedongjinwanglicunxuchuyuanhebeizha 句「河东晋王李存勖出援河北赵王王镕」 确认「和」 vs 真值「河」
+
+[1 字上文] 错例
+  码=dengfanyijinshi      句「登繙绎进士」 确认「等」 vs 真值「登」
+  码=dengfanyijin         句「登繙绎进士」 确认「等」 vs 真值「登」
+  码=danrenkeluola        句「担任科罗拉多大学教授」 确认「但」 vs 真值「担」
+  码=yinweiyugang         句「因位于冈玛日山东麓而得名」 确认「因为」 vs 真值「因位」
+  码=jinxingpaizaishanghaishixi 句「金星牌在上海市销售量排名第一」 确认「进行」 vs 真值「金星」
+  码=danrenshiyijiequanguozhengxiechangwu 句「担任十一届全国政协常务委员」 确认「但」 vs 真值「担」
+
+[2 字上文] 错例
+  码=danrenshiyijiequanguozhengxiechangwu 句「担任十一届全国政协常务委员」 确认「但」 vs 真值「担」
+  码=danrenshiyijiequanguozheng 句「担任十一届全国政协常务委员」 确认「但」 vs 真值「担」
+  码=danrenshiyijiequanguo 句「担任十一届全国政协常务委员」 确认「但」 vs 真值「担」
+  码=yinweiyuxiao         句「因位于萧山新区中部」 确认「因为」 vs 真值「因位」
+  码=jiluleyiduidoujia    句「纪录了一对都叫」 确认「记录」 vs 真值「纪录」
+  码=huodangdiyihu        句「获当地议会一致通过」 确认「或」 vs 真值「获」
+
+[3 字上文] 错例
+  码=chubanzaizha         句「初版在朝日新闻」 确认「出版」 vs 真值「初版」
+  码=danrenshiyijiequanguozhengxiechangwu 句「担任十一届全国政协常务委员」 确认「但」 vs 真值「担」
+  码=danrenshiyijiequanguozheng 句「担任十一届全国政协常务委员」 确认「但」 vs 真值「担」
+  码=danrenshiyijiequanguo 句「担任十一届全国政协常务委员」 确认「但」 vs 真值「担」
+  码=yinweiyuxiao         句「因位于萧山新区中部」 确认「因为」 vs 真值「因位」
+  码=huodangdiyihu        句「获当地议会一致通过」 确认「或」 vs 真值「获」
+
+[4 字上文] 错例
+  码=chubanzaizha         句「初版在朝日新闻」 确认「出版」 vs 真值「初版」
+
+[5 字上文] 错例
+  码=chubanzaizha         句「初版在朝日新闻」 确认「出版」 vs 真值「初版」
+  码=yinweiyuxiao         句「因位于萧山新区中部」 确认「因为」 vs 真值「因位」
+
+[6 字上文] 错例
+  码=chubanzaizha         句「初版在朝日新闻」 确认「出版」 vs 真值「初版」
+  码=yinweiyuxiao         句「因位于萧山新区中部」 确认「因为」 vs 真值「因位」
+  码=huodangdiyihu        句「获当地议会一致通过」 确认「或」 vs 真值「获」
+
+[7 字上文] 错例
+  码=yinweiyuxiao         句「因位于萧山新区中部」 确认「因为」 vs 真值「因位」
+  码=huodangdiyihu        句「获当地议会一致通过」 确认「或」 vs 真值「获」

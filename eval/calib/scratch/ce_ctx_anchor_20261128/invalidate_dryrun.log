@@ -1,0 +1,10 @@
+[inv] tokenizer ← d:/gguf_models/Qwen3-0.6B-Base-Q4_K_M.gguf
+[inv] luna16 ce_input 40196 行
+[inv] big16 windows → 191576 行
+[inv] short_ctx n=1 → 12000 行
+[inv] luna64 windows → 146405 行
+[inv] big64 eligible windows → 209294 行
+[inv] 过期 sid：ce 目录 13925 · ce64 目录 3159 · 并集 16511
+[inv] D:\llm-rerank\llm-rerank-research\eval\luna_mixed\ce\results.jsonl: 总 215979 行，过期命中 12573
+[inv] D:\llm-rerank\llm-rerank-research\eval\luna_mixed\ce64\results.jsonl: 总 333628 行，过期命中 3351
+[inv] dry-run（--apply 落失效与重放输入）
