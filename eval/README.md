@@ -128,6 +128,15 @@ fusion_sweep_all 装载器）与 `tools/audit_article_session`（真机文章逐
   产物 `eval/ce_bias_share.txt`。**2026-11-28 锚口径重跑**：16 池
   79.07%→80.00%（+0.94pp）、64 池 74.93%→76.33%（+1.40pp）——**λ=1 仍最优**，
   生产 ce_bias.tsv 不变（生成器与锚无关）**）**、
+  **`scratch/ce_ctx_anchor_20261128/n0_{rerank,firstword}.py`（2026-11-28
+  深夜：**n=0 真空上文锚收益专项**，见根 README 锚节清单⑧——
+  `n0_rerank` = cohort m=0 句首窗两臂切片（生产口径：条件真值∈池、真值=
+  完整词覆盖），结论 = 锚净效应随码长符号翻转；`n0_firstword` = wiki
+  95.9 万条正文首句首词 Top10k 三臂（引擎原序 / 整句显示序 span 分组 /
+  锚·span 分组），结论 = 首词人群锚加权 +25.52pp 净害；**定案 n=0 维持
+  freq_only，若重启必须 ≥6 字母码长门**。**重放陷阱**：裸「。」反事实
+  CE 须 `SIM_CTX_ANCHOR=0` 落共享临时目录 `n0_bare_punct_ce/`——主缓存
+  ctx=「。」的 sid 行是「。。」锚口径，不可写回）**、
   **`reading_share`（2026-11-25：多音字读音占比——万象 jichu+shici 建字→
   读音权重表（缓存 `eval/char_readings.tsv`），候选 code span × 文本 DP 对齐
   取 P(读音|字)；按最小 share 分桶 + 5 个特征进模型。结论 = 近 1:1 档最差
